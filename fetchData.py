@@ -1,66 +1,78 @@
-import requests
+import json
 import os
-import csv
+import time
 
-api_key_alphavantage = "T9742OP70MN4QXIG"
-
-
-data_path = "./data/"
-symbols_path = "symbols/"
-currency_list = "currency_list"
-api_key = api_key_alphavantage
+import requests
 
 
-def download_currency_list():
-    print("Download currency list")
-    currency_list_url = "https://www.alphavantage.co/digital_currency_list/"
-    r = requests.get(currency_list_url)
+class FetchData:
+    data_path = "./data/"
+    symbols_path = "symbols/"
+    currency_list = "currency_list"
+    order_id = 1
 
-    try:
-        os.mkdir(data_path)
-    except OSError:
-        pass
-    finally:
-        open(data_path + currency_list, "wb").write(r.content)
+    @classmethod
+    def request_get(cls, url):
+        r = requests.get(url)
+        while r.status_code != 200:
+            print("error code : " + str(r.status_code) + " WAITING DELAY")
+            time.sleep(5)
+            r = requests.get(url)
+        return r
 
+    @classmethod
+    def download_currency_list(cls):
+        print("Download currency list")
+        address = "https://api.coingecko.com/api/v3/coins/markets"
+        param1 = "?vs_currency=usd&"
+        param2 = "order=market_cap_desc&"
+        param3 = "include_platform=false"
+        currency_list_url = address + param1 + param2 + param3
+        r = cls.request_get(currency_list_url)
 
-def loop_currency_list():
-    with open(data_path + currency_list) as csv_file:
-        csv_reader = csv.reader(csv_file)
-        line_count = 0
-        for row in csv_reader:
-            if line_count > 0:
-                download_crypto_datas(row[0])
-                print(f'\t{row[0]}')
-            line_count += 1
+        try:
+            os.mkdir(cls.data_path)
+        except OSError:
+            pass
+        finally:
+            open(cls.data_path + cls.currency_list, "wb").write(r.content)
+
+    @classmethod
+    def loop_currency_list(cls):
+        file = open(cls.data_path + cls.currency_list)
+        json_list = json.loads(file.read())
+
+        for i in json_list:
+            cls.download_crypto_datas(currency=i['id'])
 
         # print(f'Processed {line_count} lines.')
 
+    @classmethod
+    def download_crypto_datas(cls, currency):
+        param1 = "vs_currency=usd&"
+        param2 = "days=max&"
+        param3 = "interval=daily&"
 
-def download_crypto_datas(currency):
-    function = "function=" + "DIGITAL_CURRENCY_MONTHLY"
-    apikey = "&apikey=" + api_key
-    market = "&market=" + "USD"
+        url = "https://api.coingecko.com/api/v3/coins/" + currency + "/market_chart/?" + param1 + param2 + param3
+        print(url)
 
-    symbols = "&symbol=" + currency
+        r = cls.request_get(url)
 
-    url = "https://www.alphavantage.co/query?" + function + symbols + market + apikey
-    # print(url)
-    r = requests.get(url)
-    data = r.json()
-    try:
-        os.mkdir(data_path + symbols_path)
-    except OSError:
-        pass
-    finally:
-        open(data_path + symbols_path + currency, "wb").write(r.content)
+        try:
+            os.mkdir(cls.data_path + cls.symbols_path)
+        except OSError:
+            pass
+        finally:
+            # filter interval to monthly
+            open(cls.data_path + cls.symbols_path + str(cls.order_id) + "_" + currency, "wb").write(r.content)
 
-    print(data)
+        cls.order_id += 1
+        print(r.content)
 
+    @classmethod
+    def fetch_data(cls):
+        print("Fetch Data")
 
-def fetch_data():
-    print("Fetch Data")
+        cls.download_currency_list()
 
-    download_currency_list()
-
-    loop_currency_list()
+        cls.loop_currency_list()

@@ -5,12 +5,13 @@
 
 # Alphavantage.co api key : T9742OP70MN4QXIG
 
-from fetchData import fetch_data
 
 # Press the green button in the gutter to run the script.
+from fetchData import FetchData
+
 if __name__ == '__main__':
     print("Start")
 
-    fetch_data()
+    FetchData().fetch_data()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
