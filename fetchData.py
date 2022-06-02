@@ -68,10 +68,23 @@ class FetchData:
             pass
         finally:
             # filter interval to monthly
-            open(cls.data_path + cls.symbols_path + str(cls.order_id) + "_" + currency, "wb").write(r.content)
+            purified = cls.get_daily_price_only(r.content)
+            open(cls.data_path + cls.symbols_path + str(cls.order_id) + "_" + currency, "wb").write(purified)
 
         cls.order_id += 1
         # print(r.content)
+
+    @classmethod
+    def get_daily_price_only(cls, content):
+        j = json.loads(content)
+
+        del j["market_caps"]
+        del j["total_volumes"]
+
+        for i in j["prices"]:
+            del i[0]
+
+        return bytearray(str(j).encode())
 
     @classmethod
     def fetch_data(cls):
