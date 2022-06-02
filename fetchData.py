@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import sys
 import time
 
 import requests
@@ -69,31 +70,99 @@ class FetchData:
             pass
         finally:
             # filter interval to monthly
-            purified = self.purify_json(r.content)
+            purified = self.purify_json(r.content, currency)
             # purified = r.content
             open(self.data_path + self.symbols_path + currency, "wb").write(purified)
 
         # print(r.content)
 
     @staticmethod
-    def purify_json(content):
+    def test_json_purified(crypto):
+        for day in crypto["days"]:
+            if day["market_cap"] is None:
+                assert False
+
+    def purify_json(self, content, currency):
         j = json.loads(content)
+
+        j["name"] = currency
 
         del j["total_volumes"]
 
+        j["days"] = []
         for i in range(0, len(j["prices"])):
             new_values = dict()
             new_values["date"] = j["prices"][i][0]
             new_values["price"] = j["prices"][i][1]
             new_values["market_cap"] = j["market_caps"][i][1]
+            if new_values["market_cap"] is None:
+                new_values["market_cap"] = j["market_caps"][i - 1][1]
             new_values["top_position"] = -1
-            j["prices"][i] = new_values
+            new_values["name"] = currency
+            j["days"].append(new_values)
 
+        del j["prices"]
         del j["market_caps"]
 
         # Change single quote to double quotes
+        self.test_json_purified(j)
         j = json.dumps(j)
         return bytearray(str(j).encode())
+
+    # @staticmethod
+    # def find_oldest_crypto(json_list):
+    #     ret = 0
+    #     time_ref = sys.maxsize
+    #
+    #     for crypto in json_list:
+    #         if crypto["days"]["0"]["date"] < time_ref:
+    #             time_ref = crypto["days"]["0"]["date"]
+    #             ret = crypto
+    #     return ret
+    #
+    # @staticmethod
+    # def testTopIsSorted(days):
+    #     market_cap = 0.0
+    #
+    #     for day in days:
+    #         try:
+    #             if market_cap < day["market_cap"]:
+    #                 market_cap = day["market_cap"]
+    #         except TypeError as e:
+    #             pass
+    #         try:
+    #             assert market_cap >= day["market_cap"]
+    #         except AssertionError as e:
+    #             pass
+    #
+    # def getDayDate(self, elem):
+    #     return elem["date"]
+    #
+    # def calculate_top_positions(self):
+    #     print("Calculate top position")
+    #     json_list = []
+    #
+    #     for file in os.listdir(self.data_path + self.symbols_path):
+    #         with open(self.data_path + self.symbols_path + file, "r") as f:
+    #             json_list.append(json.loads(f.read()))
+    #
+    #     oldest_crypto = self.find_oldest_crypto(json_list)
+    #
+    #     for day in oldest_crypto["days"]:
+    #         present_at_this_date = []
+    #         for crypto in json_list:
+    #             for i in range(0, len(crypto["days"])):
+    #                 if crypto["days"][str(i)]["date"] > oldest_crypto["days"][str(day)]["date"]:
+    #                     break
+    #                 if crypto["days"][str(i)]["date"] == oldest_crypto["days"][str(day)]["date"]:
+    #                     present_at_this_date.append(crypto["days"][str(i)])
+    #                     continue
+    #
+    #         present_at_this_date.sort(key=self.getDayDate)
+    #         self.testTopIsSorted(present_at_this_date)
+    #         pass
+    #
+    # pass
 
     def fetch_data(self):
         print("Fetch Data")
