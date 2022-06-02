@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import time
 
 import requests
@@ -10,6 +11,7 @@ class FetchData:
     symbols_path = "symbols/"
     currency_list = "currency_list"
     order_id = 1
+    stable_coins = ["busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei"]
 
     @classmethod
     def request_get(cls, url):
@@ -43,6 +45,8 @@ class FetchData:
         json_list = json.loads(file.read())
 
         for i in json_list:
+            if i['symbol'] in cls.stable_coins:
+                continue
             cls.download_crypto_datas(currency=i['id'])
 
         # print(f'Processed {line_count} lines.')
@@ -67,11 +71,13 @@ class FetchData:
             open(cls.data_path + cls.symbols_path + str(cls.order_id) + "_" + currency, "wb").write(r.content)
 
         cls.order_id += 1
-        print(r.content)
+        # print(r.content)
 
     @classmethod
     def fetch_data(cls):
         print("Fetch Data")
+
+        shutil.rmtree(cls.data_path)
 
         cls.download_currency_list()
 
