@@ -7,11 +7,17 @@
 
 
 # Press the green button in the gutter to run the script.
+import sys
+
 from fetchData import FetchData
+from simulation import Simulation
 
 if __name__ == '__main__':
     print("Start")
 
-    FetchData().fetch_data()
+    if len(sys.argv) > 1 and sys.argv[1] == "fetch_data":
+        FetchData().fetch_data()
+    elif len(sys.argv) > 1 and sys.argv[1] == "simulation":
+        Simulation().start()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

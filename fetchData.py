@@ -13,8 +13,11 @@ class FetchData:
     order_id = 1
     stable_coins = ["busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei"]
 
-    @classmethod
-    def request_get(cls, url):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def request_get(url):
         r = requests.get(url)
         while r.status_code != 200:
             print("error code : " + str(r.status_code) + " WAITING DELAY")
@@ -22,37 +25,34 @@ class FetchData:
             r = requests.get(url)
         return r
 
-    @classmethod
-    def download_currency_list(cls):
+    def download_currency_list(self):
         print("Download currency list")
         address = "https://api.coingecko.com/api/v3/coins/markets"
         param1 = "?vs_currency=usd&"
         param2 = "order=market_cap_desc&"
         param3 = "include_platform=false"
         currency_list_url = address + param1 + param2 + param3
-        r = cls.request_get(currency_list_url)
+        r = self.request_get(currency_list_url)
 
         try:
-            os.mkdir(cls.data_path)
+            os.mkdir(self.data_path)
         except OSError:
             pass
         finally:
-            open(cls.data_path + cls.currency_list, "wb").write(r.content)
+            open(self.data_path + self.currency_list, "wb").write(r.content)
 
-    @classmethod
-    def loop_currency_list(cls):
-        file = open(cls.data_path + cls.currency_list)
+    def loop_currency_list(self):
+        file = open(self.data_path + self.currency_list)
         json_list = json.loads(file.read())
 
         for i in json_list:
-            if i['symbol'] in cls.stable_coins:
+            if i['symbol'] in self.stable_coins:
                 continue
-            cls.download_crypto_datas(currency=i['id'])
+            self.download_crypto_datas(currency=i['id'])
 
         # print(f'Processed {line_count} lines.')
 
-    @classmethod
-    def download_crypto_datas(cls, currency):
+    def download_crypto_datas(self, currency):
         param1 = "vs_currency=usd&"
         param2 = "days=max&"
         param3 = "interval=daily&"
@@ -60,38 +60,41 @@ class FetchData:
         url = "https://api.coingecko.com/api/v3/coins/" + currency + "/market_chart/?" + param1 + param2 + param3
         print(url)
 
-        r = cls.request_get(url)
+        r = self.request_get(url)
 
         try:
-            os.mkdir(cls.data_path + cls.symbols_path)
+            os.mkdir(self.data_path + self.symbols_path)
         except OSError:
             pass
         finally:
             # filter interval to monthly
-            purified = cls.get_daily_price_only(r.content)
-            open(cls.data_path + cls.symbols_path + str(cls.order_id) + "_" + currency, "wb").write(purified)
+            purified = self.purify_json(r.content)
+            # purified = r.content
+            open(self.data_path + self.symbols_path + str(self.order_id) + "_" + currency, "wb").write(purified)
 
-        cls.order_id += 1
+        self.order_id += 1
         # print(r.content)
 
-    @classmethod
-    def get_daily_price_only(cls, content):
+    @staticmethod
+    def purify_json(content):
         j = json.loads(content)
 
-        del j["market_caps"]
         del j["total_volumes"]
 
-        for i in j["prices"]:
-            del i[0]
+        for i in range(0, len(j["prices"])):
+            j["prices"][i][0] = j["market_caps"][i][0]
 
+        del j["market_caps"]
+
+        # Change single quote to double quotes
+        j = json.dumps(j)
         return bytearray(str(j).encode())
 
-    @classmethod
-    def fetch_data(cls):
+    def fetch_data(self):
         print("Fetch Data")
 
-        shutil.rmtree(cls.data_path)
+        shutil.rmtree(self.data_path)
 
-        cls.download_currency_list()
+        self.download_currency_list()
 
-        cls.loop_currency_list()
+        self.loop_currency_list()
