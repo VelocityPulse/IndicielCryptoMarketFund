@@ -10,8 +10,8 @@ class FetchData:
     data_path = "./data/"
     symbols_path = "symbols/"
     currency_list = "currency_list"
-    order_id = 1
     stable_coins = ["busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei"]
+    additional_coin = ["terra-luna"]
 
     def __init__(self):
         pass
@@ -50,7 +50,8 @@ class FetchData:
                 continue
             self.download_crypto_datas(currency=i['id'])
 
-        # print(f'Processed {line_count} lines.')
+        for i in self.additional_coin:
+            self.download_crypto_datas(currency=i)
 
     def download_crypto_datas(self, currency):
         param1 = "vs_currency=usd&"
@@ -70,9 +71,8 @@ class FetchData:
             # filter interval to monthly
             purified = self.purify_json(r.content)
             # purified = r.content
-            open(self.data_path + self.symbols_path + str(self.order_id) + "_" + currency, "wb").write(purified)
+            open(self.data_path + self.symbols_path + currency, "wb").write(purified)
 
-        self.order_id += 1
         # print(r.content)
 
     @staticmethod
@@ -82,7 +82,12 @@ class FetchData:
         del j["total_volumes"]
 
         for i in range(0, len(j["prices"])):
-            j["prices"][i][0] = j["market_caps"][i][0]
+            new_values = dict()
+            new_values["date"] = j["prices"][i][0]
+            new_values["price"] = j["prices"][i][1]
+            new_values["market_cap"] = j["market_caps"][i][1]
+            new_values["top_position"] = -1
+            j["prices"][i] = new_values
 
         del j["market_caps"]
 
