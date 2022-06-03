@@ -1,6 +1,16 @@
 import com.google.gson.Gson
-import kotlinx.serialization.json.*
+import entity.CoinGeckoHistoryJson
+import entity.CustomHistoryJson
+import entity.Day
+import kotlinx.coroutines.GlobalScope.coroutineContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
+import java.io.IOException
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -14,7 +24,20 @@ class FetchData {
         arrayListOf("busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei")
 
     private val additionalCoins =
-        arrayListOf("terra_luna")
+        arrayListOf("terra-luna")
+
+    private fun getURLText(link: String): String {
+        val url = URL(link)
+
+        while (true) {
+            try {
+                return url.readText()
+            } catch (e: IOException) {
+                println("error code : " + e.message + " WAITING DELAY")
+                Thread.sleep(5000)
+            }
+        }
+    }
 
     private fun downloadCurrencyList() {
         println("Download currency list")
@@ -24,7 +47,7 @@ class FetchData {
         val param3 = "include_platform=false"
         val currencyListUrl = address + param1 + param2 + param3
 
-        val r = URL(currencyListUrl).readText()
+        val r = getURLText(currencyListUrl)
 
         Files.createDirectories(Paths.get(dataPath))
         File(dataPath + currencyList).writeText(r)
@@ -52,7 +75,7 @@ class FetchData {
         val url = "https://api.coingecko.com/api/v3/coins/$currency/market_chart/?$param1$param2$param3"
         println(url)
 
-        val r = URL(url).readText()
+        val r = getURLText(url)
 
         Files.createDirectories(Paths.get(dataPath + symbolsPath))
 
@@ -60,16 +83,34 @@ class FetchData {
         File(dataPath + symbolsPath + currency).writeText(purifiedJson)
     }
 
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST", "SENSELESS_COMPARISON")
     private fun purifyJson(content: String, currency: String): String {
-        val j = Gson().fromJson(content, HashMap::class.java)
-        j as HashMap<String, Any>
 
+        val j: CoinGeckoHistoryJson = Gson().fromJson(content, CoinGeckoHistoryJson::class.java)
 
+        // Fix market_caps
 
+        val newValues = CustomHistoryJson()
+        for (i in 0 until j.prices.size) {
 
+            try {
+                j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
+            } catch (e: Throwable) {
+                j.market_caps[i].add(1, j.market_caps[i - 1][1])
+            }
 
-        return ""
+            val day = Day(
+                date = j.prices[i][0].toLong(),
+                price = j.prices[i][1].toDouble(),
+                market_cap = j.market_caps[i][1].toLong()
+            ).apply {
+                if (market_cap == 0L && i > 0)
+                    market_cap = j.market_caps[i - 1][1].toLong();
+            }
+            newValues.days.add(i, day)
+        }
+        newValues.name = currency
+        return "newValues"
     }
 
     fun fetchData() {
@@ -80,7 +121,5 @@ class FetchData {
         downloadCurrencyList()
 
         loopCurrencyList()
-
     }
-
 }
