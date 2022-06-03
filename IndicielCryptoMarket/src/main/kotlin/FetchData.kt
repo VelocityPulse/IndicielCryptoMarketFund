@@ -2,9 +2,6 @@ import com.google.gson.Gson
 import entity.CoinGeckoHistoryJson
 import entity.CustomHistoryJson
 import entity.Day
-import kotlinx.coroutines.GlobalScope.coroutineContext
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -110,7 +107,8 @@ class FetchData {
             newValues.days.add(i, day)
         }
         newValues.name = currency
-        return "newValues"
+        
+        return Gson().toJson(newValues)
     }
 
     fun fetchData() {
