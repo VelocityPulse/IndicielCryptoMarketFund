@@ -109,60 +109,78 @@ class FetchData:
         j = json.dumps(j)
         return bytearray(str(j).encode())
 
-    # @staticmethod
-    # def find_oldest_crypto(json_list):
-    #     ret = 0
-    #     time_ref = sys.maxsize
-    #
-    #     for crypto in json_list:
-    #         if crypto["days"]["0"]["date"] < time_ref:
-    #             time_ref = crypto["days"]["0"]["date"]
-    #             ret = crypto
-    #     return ret
-    #
-    # @staticmethod
-    # def testTopIsSorted(days):
-    #     market_cap = 0.0
-    #
-    #     for day in days:
-    #         try:
-    #             if market_cap < day["market_cap"]:
-    #                 market_cap = day["market_cap"]
-    #         except TypeError as e:
-    #             pass
-    #         try:
-    #             assert market_cap >= day["market_cap"]
-    #         except AssertionError as e:
-    #             pass
-    #
-    # def getDayDate(self, elem):
-    #     return elem["date"]
-    #
-    # def calculate_top_positions(self):
-    #     print("Calculate top position")
-    #     json_list = []
-    #
-    #     for file in os.listdir(self.data_path + self.symbols_path):
-    #         with open(self.data_path + self.symbols_path + file, "r") as f:
-    #             json_list.append(json.loads(f.read()))
-    #
-    #     oldest_crypto = self.find_oldest_crypto(json_list)
-    #
-    #     for day in oldest_crypto["days"]:
-    #         present_at_this_date = []
-    #         for crypto in json_list:
-    #             for i in range(0, len(crypto["days"])):
-    #                 if crypto["days"][str(i)]["date"] > oldest_crypto["days"][str(day)]["date"]:
-    #                     break
-    #                 if crypto["days"][str(i)]["date"] == oldest_crypto["days"][str(day)]["date"]:
-    #                     present_at_this_date.append(crypto["days"][str(i)])
-    #                     continue
-    #
-    #         present_at_this_date.sort(key=self.getDayDate)
-    #         self.testTopIsSorted(present_at_this_date)
-    #         pass
-    #
-    # pass
+    @staticmethod
+    def find_oldest_crypto(json_list):
+        ret = 0
+        time_ref = sys.maxsize
+
+        for crypto in json_list:
+            if crypto["days"][0]["date"] < time_ref:
+                time_ref = crypto["days"][0]["date"]
+                ret = crypto
+        return ret
+
+    @staticmethod
+    def testTopIsSorted(days):
+        market_cap = 0.0
+
+        for day in days:
+            try:
+                if market_cap < day["market_cap"]:
+                    market_cap = day["market_cap"]
+            except TypeError as e:
+                print(e)
+            try:
+                assert market_cap >= day["market_cap"]
+            except AssertionError as e:
+                print(e)
+
+    @staticmethod
+    def get_day_date(elem):
+        return elem["date"]
+
+    @staticmethod
+    def find_crypto(json_list, currency):
+        for i in json_list:
+            if i["name"] == currency:
+                return i
+        return None
+
+
+    def calculate_top_positions(self):
+        print("Calculate top position")
+        json_list = []
+
+        for file in os.listdir(self.data_path + self.symbols_path):
+            with open(self.data_path + self.symbols_path + file, "r") as f:
+                json_list.append(json.loads(f.read()))
+
+        oldest_crypto = self.find_oldest_crypto(json_list)
+
+        turn = 0
+        for parent_day in oldest_crypto["days"]:
+            present_at_this_date = []
+            for crypto in json_list:
+                for i in crypto["days"]:
+                    if i["date"] > parent_day["date"]:
+                        break
+                    if i["date"] == parent_day["date"]:
+                        present_at_this_date.append(i)
+                        continue
+
+            present_at_this_date.sort(key=self.get_day_date)
+            self.testTopIsSorted(present_at_this_date)
+
+            for position in range(0, len(present_at_this_date)):
+                crypto = self.find_crypto(json_list, present_at_this_date[position]["name"])
+                for day in crypto["days"]:
+                    if day["date"] == parent_day["date"]:
+                        day["top_position"] = position + 1
+                        continue
+
+            print("day n°" + str(turn))
+            turn += 1
+        pass
 
     def fetch_data(self):
         print("Fetch Data")
