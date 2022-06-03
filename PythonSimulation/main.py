@@ -17,8 +17,8 @@ if __name__ == '__main__':
 
     if len(sys.argv) > 1 and sys.argv[1] == "fetch_data":
         f = FetchData()
-        # f.fetch_data()
-        f.calculate_top_positions()
+        f.fetch_data()
+        # f.calculate_top_positions()
 
     elif len(sys.argv) > 1 and sys.argv[1] == "simulation":
         Simulation().start()

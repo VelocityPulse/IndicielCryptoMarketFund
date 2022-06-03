@@ -1,7 +1,8 @@
 #Custom:
-data/
-.data/
-
+PythonSimulation/data
+PythonSimulation/data/
+IndicielCryptoMarket/data
+IndicielCryptoMarket/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

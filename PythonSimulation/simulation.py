@@ -1,7 +1,7 @@
 import plotly.express as px
 
-class Simulation:
 
+class Simulation:
     data_path = "./data/"
     symbols_path = "symbols/"
 
@@ -10,6 +10,3 @@ class Simulation:
 
     def start(self):
         pass
-
-
-
