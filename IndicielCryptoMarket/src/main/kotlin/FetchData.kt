@@ -2,6 +2,11 @@ import com.google.gson.Gson
 import entity.CoinGeckoHistoryJson
 import entity.CustomHistoryJson
 import entity.Day
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -54,14 +59,32 @@ class FetchData {
         val file = File(dataPath + currencyList)
         val json = Json.parseToJsonElement(file.readText()).jsonArray
 
-        for (elem in json) {
-            if (stableCoins.contains(elem.jsonObject["symbol"].toString()))
-                continue
-            downloadCryptoData(elem.jsonObject["id"]!!.jsonPrimitive.content)
+        val s = Semaphore(2)
+        val jobList = mutableListOf<Job>()
+
+        jobList.add(CoroutineScope(Dispatchers.IO).launch {
+            s.acquire()
+
+            for (elem in json) {
+                if (stableCoins.contains(elem.jsonObject["symbol"].toString()))
+                    continue
+                downloadCryptoData(elem.jsonObject["id"]!!.jsonPrimitive.content)
+            }
+
+            for (elem in additionalCoins)
+                downloadCryptoData(elem)
+        })
+
+        var jobStillWorking = 1
+        while (jobStillWorking > 0) {
+            Thread.sleep(3000)
+            jobStillWorking = 0
+            jobList.forEach {
+                jobStillWorking += if (it.isActive) 1 else 0
+            }
         }
 
-        for (elem in additionalCoins)
-            downloadCryptoData(elem)
+        jobList
     }
 
     private fun downloadCryptoData(currency: String) {
@@ -88,8 +111,8 @@ class FetchData {
         // Fix market_caps
 
         val newValues = CustomHistoryJson()
-        for (i in 0 until j.prices.size) {
 
+        for (i in 0 until j.prices.size) {
             try {
                 j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
             } catch (e: Throwable) {
@@ -107,7 +130,6 @@ class FetchData {
             newValues.days.add(i, day)
         }
         newValues.name = currency
-        
         return Gson().toJson(newValues)
     }
 
