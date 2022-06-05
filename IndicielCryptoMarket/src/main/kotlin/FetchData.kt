@@ -109,8 +109,6 @@ class FetchData {
 
         val j: CoinGeckoHistoryJson = Gson().fromJson(content, CoinGeckoHistoryJson::class.java)
 
-        // Fix market_caps
-
         val newValues = CustomHistoryJson()
 
         for (i in 0 until j.prices.size) {
@@ -121,6 +119,7 @@ class FetchData {
             }
 
             val day = Day(
+                name = currency,
                 date = j.prices[i][0].toLong(),
                 price = j.prices[i][1].toDouble(),
                 market_cap = j.market_caps[i][1].toLong()
@@ -144,6 +143,19 @@ class FetchData {
         loopCurrencyList()
     }
 
+    private fun findOldestCrypto(list: MutableList<CustomHistoryJson>): CustomHistoryJson {
+        var timeRef = Long.MAX_VALUE
+        var ret: CustomHistoryJson? = null
+
+        for (crypto in list) {
+            if (crypto.days[0].date < timeRef) {
+                timeRef = crypto.days[0].date
+                ret = crypto
+            }
+        }
+        return ret!!
+    }
+
     fun calculatePositions() {
         println("Calculate top position")
 
@@ -153,9 +165,56 @@ class FetchData {
         for (file in dir.listFiles()!!)
             jsonList.add(Gson().fromJson(file.readText(), CustomHistoryJson::class.java))
 
-        jsonList
+        val oldest_crypto = findOldestCrypto(jsonList)
+
+        var turn = 0
+        for (parentDay in oldest_crypto.days) {
+            val presentAtThisDay = mutableListOf<Day>()
+
+            for (crypto in jsonList) {
+                for (day in crypto.days) {
+                    if (day.date > parentDay.date)
+                        break
+                    if (day.date == parentDay.date) {
+                        presentAtThisDay.add(day)
+                        continue
+                    }
+                }
+            }
+
+            if (presentAtThisDay.size == 50)
+                presentAtThisDay
+
+            presentAtThisDay.sortByDescending {
+                it.market_cap
+            }
+
+            presentAtThisDay
+        }
 
 
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
