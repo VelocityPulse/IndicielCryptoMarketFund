@@ -5,6 +5,10 @@ import com.google.gson.annotations.Expose
 class CustomHistoryJson {
     var name: String = ""
     var days: MutableList<Day> = arrayListOf()
+
+    override fun toString(): String {
+        return name
+    }
 }
 
 data class Day(

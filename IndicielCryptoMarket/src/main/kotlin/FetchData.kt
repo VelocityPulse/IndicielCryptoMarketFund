@@ -20,6 +20,8 @@ class FetchData {
 
     private val dataPath = "./data/"
     private val symbolsPath = "symbols/"
+    private val processedSymbolsPath = "processedSymbols/"
+    private val processedSymbolsFile = "symbols"
     private val currencyList = "currency_list"
     private val stableCoins =
         arrayListOf("busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei")
@@ -156,8 +158,17 @@ class FetchData {
         return ret!!
     }
 
+    private fun findCrypto(jsonList: MutableList<CustomHistoryJson>, name: String): CustomHistoryJson? {
+        for (elem in jsonList) {
+            if (elem.name == name)
+                return elem
+        }
+        return null
+    }
+
     fun calculatePositions() {
         println("Calculate top position")
+        val startTime = System.nanoTime()
 
         val jsonList = mutableListOf<CustomHistoryJson>()
 
@@ -165,10 +176,9 @@ class FetchData {
         for (file in dir.listFiles()!!)
             jsonList.add(Gson().fromJson(file.readText(), CustomHistoryJson::class.java))
 
-        val oldest_crypto = findOldestCrypto(jsonList)
+        val oldestCrypto = findOldestCrypto(jsonList)
 
-        var turn = 0
-        for (parentDay in oldest_crypto.days) {
+        for ((turn, parentDay) in oldestCrypto.days.withIndex()) {
             val presentAtThisDay = mutableListOf<Day>()
 
             for (crypto in jsonList) {
@@ -182,17 +192,32 @@ class FetchData {
                 }
             }
 
-            if (presentAtThisDay.size == 50)
-                presentAtThisDay
-
             presentAtThisDay.sortByDescending {
                 it.market_cap
             }
 
-            presentAtThisDay
+
+            for ((position, elem) in presentAtThisDay.withIndex()) {
+                val crypto = findCrypto(jsonList, elem.name)!!
+                for (day in crypto.days) {
+                    if (day.date == parentDay.date) {
+                        day.top_position = position + 1
+                        continue
+                    }
+                }
+            }
+
+            println("Day n° $turn")
+        }
+        jsonList.sortByDescending { it.days.last().market_cap }
+
+        File(dataPath + processedSymbolsPath).mkdirs()
+        for (elem in jsonList) {
+            val jsonText = Gson().toJson(elem)
+            File(dataPath + processedSymbolsPath + elem.name).writeText(jsonText)
         }
 
-
+        println("End, Time elapsed : " + ((System.nanoTime() - startTime) / 1000000000.0) + "s")
     }
 }
 

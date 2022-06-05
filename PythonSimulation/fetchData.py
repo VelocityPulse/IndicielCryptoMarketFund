@@ -147,6 +147,7 @@ class FetchData:
         return None
 
     def calculate_top_positions(self):
+        t = time.time()
         print("Calculate top position")
         json_list = []
 
@@ -179,6 +180,8 @@ class FetchData:
 
             print("day n°" + str(turn))
             turn += 1
+
+        print("End. Time : " + str((time.time() - t)))
         pass
 
     def fetch_data(self):
