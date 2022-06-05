@@ -1,5 +1,7 @@
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import entity.CoinGeckoHistoryJson
+import entity.Currency
 import entity.CustomHistoryJson
 import entity.Day
 import kotlinx.coroutines.CoroutineScope
@@ -7,12 +9,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.io.IOException
+import java.lang.reflect.Type
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -57,7 +56,10 @@ class FetchData {
 
     private fun loopCurrencyList() {
         val file = File(dataPath + currencyList)
-        val json = Json.parseToJsonElement(file.readText()).jsonArray
+
+        val collectionType: Type = object : TypeToken<List<Currency>>() {}.type
+
+        val json = Gson().fromJson(file.readText(), Array<Currency>::class.java)
 
         val s = Semaphore(2)
         val jobList = mutableListOf<Job>()
@@ -66,9 +68,10 @@ class FetchData {
             s.acquire()
 
             for (elem in json) {
-                if (stableCoins.contains(elem.jsonObject["symbol"].toString()))
+                elem.symbol
+                if (stableCoins.contains(elem.symbol))
                     continue
-                downloadCryptoData(elem.jsonObject["id"]!!.jsonPrimitive.content)
+                downloadCryptoData(elem.id)
             }
 
             for (elem in additionalCoins)
@@ -83,8 +86,6 @@ class FetchData {
                 jobStillWorking += if (it.isActive) 1 else 0
             }
         }
-
-        jobList
     }
 
     private fun downloadCryptoData(currency: String) {
@@ -142,4 +143,19 @@ class FetchData {
 
         loopCurrencyList()
     }
+
+    fun calculatePositions() {
+        println("Calculate top position")
+
+        val jsonList = mutableListOf<CustomHistoryJson>()
+
+        val dir = File(dataPath + symbolsPath)
+        for (file in dir.listFiles()!!)
+            jsonList.add(Gson().fromJson(file.readText(), CustomHistoryJson::class.java))
+
+        jsonList
+
+
+    }
 }
+

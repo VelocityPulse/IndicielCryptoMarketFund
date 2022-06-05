@@ -146,7 +146,6 @@ class FetchData:
                 return i
         return None
 
-
     def calculate_top_positions(self):
         print("Calculate top position")
         json_list = []

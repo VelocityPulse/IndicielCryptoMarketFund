@@ -1,8 +1,11 @@
 #Custom:
+PythonSimulation/data
 PythonSimulation/data/
-PythonSimulation/data/*
+IndicielCryptoMarket/data
 IndicielCryptoMarket/data/
-IndicielCryptoMarket/data/*
+IndicielCryptoMarket/.gradle
+IndicielCryptoMarket/.gradle/
+IndicielCryptoMarket/.gradle/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
