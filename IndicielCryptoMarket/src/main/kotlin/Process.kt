@@ -205,21 +205,21 @@ class Process {
 
         for (i in 0 until j.prices.size) {
 
-            if (j.market_caps.size == i -1)
+            if (j.market_caps.size == i - 1)
 
-            try {
-                j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
-                if (j.market_caps[i][1].toLong() == 0L)
-                    throw java.lang.IllegalArgumentException()
-            } catch (e: Throwable) {
-                val fetchedMarketCap = getClosestMarketCap(i, j.market_caps, 3, currency)
-                if (fetchedMarketCap == null) {
-                    println("Jumping this day")
-                    continue
+                try {
+                    j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
+                    if (j.market_caps[i][1].toLong() == 0L)
+                        throw java.lang.IllegalArgumentException()
+                } catch (e: Throwable) {
+                    val fetchedMarketCap = getClosestMarketCap(i, j.market_caps, 3, currency)
+                    if (fetchedMarketCap == null) {
+                        println("Jumping this day")
+                        continue
+                    }
+                    println("Market cap retrieved: $fetchedMarketCap")
+                    j.market_caps[i].add(1, fetchedMarketCap.toDouble())
                 }
-                println("Market cap retrieved: $fetchedMarketCap")
-                j.market_caps[i].add(1, fetchedMarketCap.toDouble())
-            }
 
             val day = Day(
                 name = currency,
@@ -238,7 +238,12 @@ class Process {
         return Gson().toJson(newValues)
     }
 
-    private fun getClosestMarketCap(offset: Int, marketCaps: MutableList<MutableList<Double>>, limit: Int, currency: String): Long? {
+    private fun getClosestMarketCap(
+        offset: Int,
+        marketCaps: MutableList<MutableList<Double>>,
+        limit: Int,
+        currency: String
+    ): Long? {
         var result1: Long? = 0L
         var result2: Long? = 0L
         var turn = 0
@@ -303,6 +308,8 @@ class Process {
         for (file in dir.listFiles()!!)
             jsonList.add(Gson().fromJson(file.readText(), CustomHistoryJson::class.java))
 
+        normalizeDates(jsonList)
+
         val oldestCrypto = findOldestCrypto(jsonList)
 
         for ((turn, parentDay) in oldestCrypto.days.withIndex()) {
@@ -338,13 +345,71 @@ class Process {
         }
         jsonList.sortByDescending { it.days.last().market_cap }
 
+
+        checkDuplicatedPositions(jsonList)
+
         File(dataPath + processedSymbolsPath).mkdirs()
         for (elem in jsonList) {
             val jsonText = Gson().toJson(elem)
             File(dataPath + processedSymbolsPath + elem.name).writeText(jsonText)
         }
 
+
         println("End, Time elapsed : " + ((System.nanoTime() - startTime) / 1000000000.0) + "s")
+    }
+
+    private fun normalizeDates(jsonList: MutableList<CustomHistoryJson>) {
+        val oldestCrypto = findOldestCrypto(jsonList)
+
+        val existingCryptoMap = hashMapOf<CustomHistoryJson, Int>()
+        for ((turn, parentDay) in oldestCrypto.days.withIndex()) {
+
+            for (crypto in jsonList) {
+                if (existingCryptoMap.containsKey(crypto))
+                    continue
+                for (day in crypto.days) {
+                    if (day.date > parentDay.date)
+                        break
+                    if (day.date == parentDay.date) {
+                        existingCryptoMap[crypto] = 0
+                        continue
+                    }
+                }
+            }
+
+            for (crypto in existingCryptoMap.keys) {
+                if (crypto.days.size >= existingCryptoMap[crypto]!!)
+                    continue
+                if (crypto.days[existingCryptoMap[crypto]!!].date != parentDay.date)
+                    crypto.days[existingCryptoMap[crypto]!!].date = parentDay.date
+                existingCryptoMap[crypto] = existingCryptoMap[crypto]!! + 1
+            }
+
+        }
+    }
+
+    private fun checkDuplicatedPositions(jsonList: MutableList<CustomHistoryJson>) {
+        val oldestCrypto = findOldestCrypto(jsonList)
+
+        for ((turn, parentDay) in oldestCrypto.days.withIndex()) {
+
+            val sameDays = mutableListOf<Day>()
+            for (crypto in jsonList) {
+                val day = crypto.days.find { day -> day.date == parentDay.date } ?: continue
+                sameDays.add(day)
+            }
+
+            val positionList = mutableListOf<Int>()
+
+            if (turn == 3304)
+                Unit
+
+            for (day in sameDays) {
+                if (positionList.contains(day.top_position))
+                    throw java.lang.IllegalArgumentException()
+                positionList.add(day.top_position)
+            }
+        }
     }
 }
 

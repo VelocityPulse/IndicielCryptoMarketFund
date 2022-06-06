@@ -31,8 +31,30 @@ class Simulation:
                 ret = crypto
         return ret
 
+    def checkDuplicatePosition(self, json_list, day_number):
+        days = []
+
+        oldest_crypto = self.find_oldest_crypto(json_list)
+
+        date = oldest_crypto["days"][day_number]["date"]
+
+        for crypto in json_list:
+            for day in crypto["days"]:
+                if day["date"] == date:
+                    days.append(day)
+
+        position_list = []
+        for day in days:
+            if position_list.__contains__(day["top_position"]):
+                print("duplicate top position")
+                exit(-1)
+            position_list.append(day["top_position"])
+        print("success...")
+
     def start(self):
         symbol_list = self.getSymbols()
+
+        self.checkDuplicatePosition(symbol_list, 3304)
 
         multiple = 1
         stopping_end = 20
