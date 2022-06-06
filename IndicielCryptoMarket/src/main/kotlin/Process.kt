@@ -1,20 +1,15 @@
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import entity.CoinGeckoHistoryJson
+import entity.*
 import entity.Currency
-import entity.CustomHistoryJson
-import entity.Day
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import java.io.File
 import java.io.IOException
-import java.lang.reflect.Type
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.text.SimpleDateFormat
+import java.util.*
 
 class Process {
 
@@ -23,13 +18,13 @@ class Process {
     private val processedSymbolsPath = "processedSymbols/"
     private val processedSymbolsFile = "symbols"
     private val currencyList = "currency_list"
-    private val stableCoins =
-        arrayListOf("busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei")
+    private val ignoredCoins =
+        arrayListOf("busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei", "wbtc")
 
     private val additionalCoins =
         arrayListOf("terra-luna")
 
-    private fun getURLText(link: String): String {
+    private fun getURLText(link: String, bypassCode: Int = -1): String? {
         val url = URL(link)
 
         while (true) {
@@ -37,6 +32,8 @@ class Process {
                 return url.readText()
             } catch (e: IOException) {
                 println("error code : " + e.message + " WAITING DELAY")
+                if (e.message!!.contains(" $bypassCode "))
+                    return null
                 Thread.sleep(5000)
             }
         }
@@ -50,7 +47,7 @@ class Process {
         val param3 = "include_platform=false"
         val currencyListUrl = address + param1 + param2 + param3
 
-        val r = getURLText(currencyListUrl)
+        val r = getURLText(currencyListUrl)!!
 
         Files.createDirectories(Paths.get(dataPath))
         File(dataPath + currencyList).writeText(r)
@@ -59,26 +56,24 @@ class Process {
     private fun loopCurrencyList() {
         val file = File(dataPath + currencyList)
 
-        val collectionType: Type = object : TypeToken<List<Currency>>() {}.type
-
         val json = Gson().fromJson(file.readText(), Array<Currency>::class.java)
 
-        val s = Semaphore(2)
+        val s = Semaphore(1)
         val jobList = mutableListOf<Job>()
 
-        jobList.add(CoroutineScope(Dispatchers.IO).launch {
-            s.acquire()
+//        jobList.add(CoroutineScope(Dispatchers.IO).launch {
+//            s.acquire()
 
-            for (elem in json) {
-                elem.symbol
-                if (stableCoins.contains(elem.symbol))
-                    continue
-                downloadCryptoData(elem.id)
-            }
+        for (elem in json) {
+            elem.symbol
+            if (ignoredCoins.contains(elem.symbol))
+                continue
+            downloadCryptoData(elem.id)
+        }
 
-            for (elem in additionalCoins)
-                downloadCryptoData(elem)
-        })
+        for (elem in additionalCoins)
+            downloadCryptoData(elem)
+//        })
 
         var jobStillWorking = 1
         while (jobStillWorking > 0) {
@@ -98,7 +93,7 @@ class Process {
         val url = "https://api.coingecko.com/api/v3/coins/$currency/market_chart/?$param1$param2$param3"
         println(url)
 
-        val r = getURLText(url)
+        val r = getURLText(url)!!
 
         Files.createDirectories(Paths.get(dataPath + symbolsPath))
 
@@ -106,33 +101,162 @@ class Process {
         File(dataPath + symbolsPath + currency).writeText(purifiedJson)
     }
 
+    @Deprecated("")
+    private fun retrieveMarketCap(date: Long, currency: String): Long? {
+
+        val param1 = "date=" + SimpleDateFormat("dd-MM-yyyy").format(Date(date))
+
+        val url = "https://api.coingecko.com/api/v3/coins/$currency/history/?$param1"
+        println(url)
+
+        val r = getURLText(url, 400) ?: return null
+        val json: CoinGeckoHistory = Gson().fromJson(r, CoinGeckoHistory::class.java)
+
+        json.market_data.market_cap["usd"].let {
+            if (it == null)
+                return null
+            return it.toLong()
+        }
+    }
+
+//    val badHistoryMemory = hashMapOf<String, HashMap<Long, Long?>>()
+//
+//    private fun hasDate(currency: String, date: Long): Boolean {
+//        return badHistoryMemory.containsKey(currency) && badHistoryMemory[currency]!!.containsKey(date)
+//    }
+//
+//    private fun addDate(currency: String, date: Long, result: Long?) {
+//        if (!badHistoryMemory.containsKey(currency))
+//            badHistoryMemory[currency] = hashMapOf()
+//        badHistoryMemory[currency]!![date] = result
+//    }
+//
+//    private fun printDate(date: Long): String {
+//        return SimpleDateFormat("dd-MM-yyyy").format(Date(date))
+//    }
+//
+//    var economizedPlusCall = 0
+//    var economizedMinorCall = 0
+//
+//    private fun retrieveMarketCapExtended(date: Long, currency: String): Long? {
+//        if (hasDate(currency, date))
+//            return badHistoryMemory[currency]!![date]
+//
+//        var result1: Long? = retrieveMarketCap(date, currency) ?: return null
+//        if (result1 != 0L)
+//            return result1
+//
+//        result1 = 0L
+//        var result2: Long? = 0L
+//
+////        if (economizedMinorCall > 46)
+////            Unit
+//
+////        var turn = 1
+////        while (result1 == 0L && result2 == 0L) {
+////            val date1 = date + (86400000 * turn)
+////            val date2 = date - (86400000 * turn)
+////
+////            if (hasDate(currency, date1)) {
+////                result1 = badHistoryMemory[currency]!![date1]
+////                economizedPlusCall++
+////                println("economized plus call $economizedPlusCall")
+////            } else {
+////                result1 = retrieveMarketCap(date1, currency)
+////                if (result1 == null || result1 == 0L)
+////                    addDate(currency, date1, result1)
+////            }
+////
+////            if (hasDate(currency, date2)) {
+////                result2 = badHistoryMemory[currency]!![date2]
+////                economizedMinorCall++
+////                println("economized minor call $economizedMinorCall")
+////            } else {
+////                result2 = retrieveMarketCap(date2, currency)
+////                if (result2 == null || result1 == 0L)
+////                    addDate(currency, date2, result2)
+////            }
+////
+////            turn++
+////            if (turn > 2)
+////                return null
+////        }
+//
+//        if (result1 != 0L)
+//            return result1
+//        return result2
+//    }
+
+    private fun checkPurifiedJson(newValues: CustomHistoryJson) {
+        for (day in newValues.days) {
+            if (day.market_cap < 1)
+                throw AssertionError()
+
+//                retrieveMarketCap(day.date, day.name)
+        }
+    }
+
     @Suppress("UNCHECKED_CAST", "SENSELESS_COMPARISON")
     private fun purifyJson(content: String, currency: String): String {
 
-        val j: CoinGeckoHistoryJson = Gson().fromJson(content, CoinGeckoHistoryJson::class.java)
+        val j: CoinGeckoFullHistory = Gson().fromJson(content, CoinGeckoFullHistory::class.java)
 
         val newValues = CustomHistoryJson()
 
         for (i in 0 until j.prices.size) {
             try {
                 j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
+                if (j.market_caps[i][1].toLong() == 0L)
+                    throw java.lang.IllegalArgumentException()
             } catch (e: Throwable) {
-                j.market_caps[i].add(1, j.market_caps[i - 1][1])
+                val fetchedMarketCap = getClosestMarketCap(i, j.market_caps, 3, currency)
+                if (fetchedMarketCap == null) {
+                    println("Jumping this day")
+                    continue
+                }
+                println("Market cap retrieved: $fetchedMarketCap")
+                j.market_caps[i].add(1, fetchedMarketCap.toDouble())
             }
 
             val day = Day(
                 name = currency,
                 date = j.prices[i][0].toLong(),
-                price = j.prices[i][1].toDouble(),
+                price = j.prices[i][1],
                 market_cap = j.market_caps[i][1].toLong()
             ).apply {
-                if (market_cap == 0L && i > 0)
-                    market_cap = j.market_caps[i - 1][1].toLong();
+                if (market_cap == 0L)
+                    throw java.lang.IllegalArgumentException()
             }
-            newValues.days.add(i, day)
+            newValues.days.add(newValues.days.size, day)
         }
+
+        checkPurifiedJson(newValues)
         newValues.name = currency
         return Gson().toJson(newValues)
+    }
+
+    private fun getClosestMarketCap(offset: Int, marketCaps: MutableList<MutableList<Double>>, limit: Int, currency: String): Long? {
+        var result1: Long? = 0L
+        var result2: Long? = 0L
+        var turn = 0
+
+        while (result1 == 0L && result2 == 0L) {
+            println("Researching marketcap for [$currency] turn n°$turn")
+            if (turn == limit)
+                return null
+            turn++
+
+            try {
+                result1 = marketCaps[offset + (turn + 1)][1].toLong()
+                result2 = marketCaps[offset - (turn - 1)][1].toLong()
+            } catch (th: Throwable) {
+                return null
+            }
+        }
+
+        if (result1 != 0L)
+            return result1
+        return result2
     }
 
     fun fetchData() {
@@ -196,6 +320,8 @@ class Process {
                 it.market_cap
             }
 
+            if (turn == 3323)
+                Unit
 
             for ((position, elem) in presentAtThisDay.withIndex()) {
                 val crypto = findCrypto(jsonList, elem.name)!!
