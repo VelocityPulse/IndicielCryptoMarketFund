@@ -6,13 +6,13 @@ fun main(args: Array<String>) {
     println("Program arguments: ${args.joinToString()}")
 
     if (args.isNotEmpty()) {
+        val f = Process()
         if ("fetch_data" == args[0])
-            FetchData().apply {
-//                this.fetchData()
-                this.calculatePositions()
-            }
-        else if ("simulation" == args[0])
-            println("use python")
+            f.fetchData()
+
+        if ("calculate" == args[0])
+            f.calculatePositions()
+
     }
 
 }

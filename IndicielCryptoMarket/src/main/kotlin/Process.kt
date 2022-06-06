@@ -16,7 +16,7 @@ import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 
-class FetchData {
+class Process {
 
     private val dataPath = "./data/"
     private val symbolsPath = "symbols/"
@@ -203,7 +203,8 @@ class FetchData {
                     if (day.date == parentDay.date) {
                         day.top_position = position + 1
                         continue
-                    }
+                    } else
+                        continue
                 }
             }
 
