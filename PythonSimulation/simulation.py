@@ -35,15 +35,16 @@ class Simulation:
         symbol_list = self.getSymbols()
 
         multiple = 1
-        symbol_turn = 0
+        stopping_end = 20
+        starting_day = 3000
+
         fig = go.Figure()
-
         processed_crypto = []
-
         oldest_crypto = self.find_oldest_crypto(symbol_list)
-
         day_turn = 0
+        symbol_turn = 0
         for parent_day in oldest_crypto["days"]:
+
             for crypto in symbol_list:
                 symbol_turn += 1
                 if processed_crypto.__contains__(crypto):
@@ -51,24 +52,28 @@ class Simulation:
                 x_list = []
                 y_list = []
                 if crypto["days"][0]["date"] == parent_day["date"]:
-                    start_day = 0
+                    first_crypto_day = 0
                     for day in crypto["days"]:
-                        if (day_turn + start_day) % multiple == 0:
-                            x_list.append(day_turn + start_day)
-                            # if day["top_position"] == -1:
-                            #     y_list.append(0)
-                            #     continue
-                            y_list.append((day["top_position"] + 101 - day["top_position"] * 2))
-                        start_day += 1
+                        if day["top_position"] == -1:
+                            continue
+
+                        if day_turn + first_crypto_day > len(oldest_crypto["days"]) - stopping_end:
+                            continue
+
+                        top_position = day["top_position"] + 101 - day["top_position"] * 2
+                        if (day_turn + first_crypto_day) % multiple == 0 and top_position > 50:
+
+                            if day_turn + first_crypto_day > starting_day:
+                                x_list.append(day_turn + first_crypto_day)
+                                y_list.append(top_position)
+                        first_crypto_day += 1
+
                     processed_crypto.append(crypto)
                     fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=crypto["name"]))
 
             day_turn += 1
             print("day n°" + str(day_turn))
 
-            if symbol_turn == 30:
-                fig.show()
-                return
         fig.show()
 
         pass

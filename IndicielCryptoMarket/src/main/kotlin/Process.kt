@@ -204,6 +204,9 @@ class Process {
         val newValues = CustomHistoryJson()
 
         for (i in 0 until j.prices.size) {
+
+            if (j.market_caps.size == i -1)
+
             try {
                 j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
                 if (j.market_caps[i][1].toLong() == 0L)
@@ -319,9 +322,6 @@ class Process {
             presentAtThisDay.sortByDescending {
                 it.market_cap
             }
-
-            if (turn == 3323)
-                Unit
 
             for ((position, elem) in presentAtThisDay.withIndex()) {
                 val crypto = findCrypto(jsonList, elem.name)!!
