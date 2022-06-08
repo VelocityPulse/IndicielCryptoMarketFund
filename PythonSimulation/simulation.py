@@ -51,6 +51,38 @@ class Simulation:
             position_list.append(day["top_position"])
         print("success...")
 
+    def checkDuplicatePositionInList(self, check_list):
+        present_number = []
+
+        for item in check_list:
+            if present_number.__contains__(item):
+                return False
+            present_number.append(item)
+        return True
+
+    def checkDuplicatePositionByDictionary(self, dictionary, starting_day, max_day):
+
+        for i in range(starting_day, max_day):
+            days_dict = {}
+            for crypto in dictionary.items():
+                for day in crypto[1]:
+                    if i == day:
+                        days_dict.update({crypto[0]: crypto[1][day]})
+
+            if i == 3301:
+                i
+
+            used_positions = []
+            for item in days_dict.items():
+                if used_positions.__contains__(item[1]):
+                    print("error")
+                    exit(-1)
+                else:
+                    used_positions.append(item[1])
+
+        print("no duplication found")
+        pass
+
     def start(self):
         symbol_list = self.getSymbols()
 
@@ -58,16 +90,20 @@ class Simulation:
 
         multiple = 1
         stopping_end = 20
-        starting_day = 3000
+        starting_day = 3200
 
         fig = go.Figure()
         processed_crypto = []
         oldest_crypto = self.find_oldest_crypto(symbol_list)
         day_turn = 0
         symbol_turn = 0
-        for parent_day in oldest_crypto["days"]:
 
-            for crypto in symbol_list:
+        daily_dictionary_position_check = {}
+
+        for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
+
+            for crypto in symbol_list:  # FOR ALL PRESENT CRYPTO IN THIS BITCOIN DAY
+
                 symbol_turn += 1
                 if processed_crypto.__contains__(crypto):
                     continue
@@ -75,19 +111,32 @@ class Simulation:
                 y_list = []
                 if crypto["days"][0]["date"] == parent_day["date"]:
                     first_crypto_day = 0
-                    for day in crypto["days"]:
+
+                    for day in crypto["days"]:  # FOR ALL DAYS OF THIS PRESENT CRYPTO
                         if day["top_position"] == -1:
                             continue
 
-                        if day_turn + first_crypto_day > len(oldest_crypto["days"]) - stopping_end:
+                        relative_day_count = day_turn + first_crypto_day
+
+                        if relative_day_count > len(oldest_crypto["days"]) - stopping_end:
                             continue
 
                         top_position = day["top_position"] + 101 - day["top_position"] * 2
-                        if (day_turn + first_crypto_day) % multiple == 0 and top_position > 50:
+                        if relative_day_count % multiple == 0 and top_position > 50:
 
-                            if day_turn + first_crypto_day > starting_day:
-                                x_list.append(day_turn + first_crypto_day)
+                            if relative_day_count > starting_day:
+
+                                new_key = {relative_day_count: top_position}
+                                if crypto["name"] in daily_dictionary_position_check:
+                                    daily_dictionary_position_check[crypto["name"]].update(new_key)
+                                else:
+                                    new_row = {crypto["name"]: {}}
+                                    daily_dictionary_position_check.update(new_row)
+                                    daily_dictionary_position_check[crypto["name"]].update(new_key)
+
+                                x_list.append(relative_day_count)
                                 y_list.append(top_position)
+
                         first_crypto_day += 1
 
                     processed_crypto.append(crypto)
@@ -95,7 +144,7 @@ class Simulation:
 
             day_turn += 1
             print("day n°" + str(day_turn))
-
+        self.checkDuplicatePositionByDictionary(daily_dictionary_position_check, starting_day, day_turn)
         fig.show()
 
         pass
