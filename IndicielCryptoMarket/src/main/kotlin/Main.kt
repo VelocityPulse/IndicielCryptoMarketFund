@@ -8,6 +8,8 @@ fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
         val f = Process()
         if ("fetch_data" == args[0])
+
+        // TODO : STETH remove stacked ether
             f.fetchData()
 
         if ("calculate" == args[0])
