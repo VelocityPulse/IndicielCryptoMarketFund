@@ -70,7 +70,7 @@ class Simulation:
             daily_dictionary_position_check[crypto["name"]].update(new_key)
 
     def checkDuplicatePositionByDictionary(self, dictionary, starting_day, max_day):
-
+        duplication_count = 0
         for i in range(starting_day, max_day):
             days_dict = {}
             for crypto in dictionary.items():
@@ -85,11 +85,12 @@ class Simulation:
             for item in days_dict.items():
                 if used_positions.__contains__(item[1]):
                     print("error")
+                    duplication_count += 1
                     # exit(-1)
                 else:
                     used_positions.append(item[1])
 
-        print("no duplication found")
+        print("duplication found :" + str(duplication_count))
         pass
 
     def start(self):
@@ -99,7 +100,7 @@ class Simulation:
 
         multiple = 1
         stopping_end = 20
-        starting_day = 3250
+        starting_day = 2000
 
         fig = go.Figure()
         processed_crypto = []
@@ -151,10 +152,10 @@ class Simulation:
                                 x_list.append(relative_day_count)
                                 y_list.append(top_position)
 
-
                     processed_crypto.append(crypto)
                     fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=crypto["name"]))
 
+            day_turn += 1
             print("day n°" + str(day_turn))
         self.checkDuplicatePositionByDictionary(daily_dictionary_position_check, starting_day, day_turn)
         fig.show()
