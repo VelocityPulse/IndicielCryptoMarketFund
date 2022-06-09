@@ -60,6 +60,15 @@ class Simulation:
             present_number.append(item)
         return True
 
+    def storeToDictionaryForCheck(self, relative_day_count, daily_dictionary_position_check, top_position, crypto):
+        new_key = {relative_day_count: top_position}
+        if crypto["name"] in daily_dictionary_position_check:
+            daily_dictionary_position_check[crypto["name"]].update(new_key)
+        else:
+            new_row = {crypto["name"]: {}}
+            daily_dictionary_position_check.update(new_row)
+            daily_dictionary_position_check[crypto["name"]].update(new_key)
+
     def checkDuplicatePositionByDictionary(self, dictionary, starting_day, max_day):
 
         for i in range(starting_day, max_day):
@@ -76,7 +85,7 @@ class Simulation:
             for item in days_dict.items():
                 if used_positions.__contains__(item[1]):
                     print("error")
-                    exit(-1)
+                    # exit(-1)
                 else:
                     used_positions.append(item[1])
 
@@ -90,7 +99,7 @@ class Simulation:
 
         multiple = 1
         stopping_end = 20
-        starting_day = 3200
+        starting_day = 3250
 
         fig = go.Figure()
         processed_crypto = []
@@ -110,10 +119,13 @@ class Simulation:
                 x_list = []
                 y_list = []
                 if crypto["days"][0]["date"] == parent_day["date"]:
-                    first_crypto_day = 0
+                    first_crypto_day = -1
 
                     for day in crypto["days"]:  # FOR ALL DAYS OF THIS PRESENT CRYPTO
+                        first_crypto_day += 1
+
                         if day["top_position"] == -1:
+                            print("passing position " + str(day["top_position"]))
                             continue
 
                         relative_day_count = day_turn + first_crypto_day
@@ -122,27 +134,27 @@ class Simulation:
                             continue
 
                         top_position = day["top_position"] + 101 - day["top_position"] * 2
+
+                        if relative_day_count == 3305 and crypto["name"] == "ripple":
+                            crypto
+
+                        if relative_day_count == 3305 and crypto["name"] == "cardano":
+                            crypto
+
                         if relative_day_count % multiple == 0 and top_position > 50:
 
                             if relative_day_count > starting_day:
 
-                                new_key = {relative_day_count: top_position}
-                                if crypto["name"] in daily_dictionary_position_check:
-                                    daily_dictionary_position_check[crypto["name"]].update(new_key)
-                                else:
-                                    new_row = {crypto["name"]: {}}
-                                    daily_dictionary_position_check.update(new_row)
-                                    daily_dictionary_position_check[crypto["name"]].update(new_key)
+                                self.storeToDictionaryForCheck(relative_day_count, daily_dictionary_position_check,
+                                                               top_position, crypto)
 
                                 x_list.append(relative_day_count)
                                 y_list.append(top_position)
 
-                        first_crypto_day += 1
 
                     processed_crypto.append(crypto)
                     fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=crypto["name"]))
 
-            day_turn += 1
             print("day n°" + str(day_turn))
         self.checkDuplicatePositionByDictionary(daily_dictionary_position_check, starting_day, day_turn)
         fig.show()
