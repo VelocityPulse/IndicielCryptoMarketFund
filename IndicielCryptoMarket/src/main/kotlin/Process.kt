@@ -2,7 +2,6 @@ import com.google.gson.Gson
 import entity.*
 import entity.Currency
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.sync.Semaphore
 import java.io.File
 import java.io.IOException
 import java.net.URL
@@ -16,7 +15,6 @@ class Process {
     private val dataPath = "./data/"
     private val symbolsPath = "symbols/"
     private val processedSymbolsPath = "processedSymbols/"
-    private val processedSymbolsFile = "symbols"
     private val currencyList = "currency_list"
     private val ignoredCoins =
         arrayListOf("busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei", "wbtc")
@@ -58,11 +56,7 @@ class Process {
 
         val json = Gson().fromJson(file.readText(), Array<Currency>::class.java)
 
-        val s = Semaphore(1)
         val jobList = mutableListOf<Job>()
-
-//        jobList.add(CoroutineScope(Dispatchers.IO).launch {
-//            s.acquire()
 
         for (elem in json) {
             elem.symbol
@@ -73,7 +67,6 @@ class Process {
 
         for (elem in additionalCoins)
             downloadCryptoData(elem)
-//        })
 
         var jobStillWorking = 1
         while (jobStillWorking > 0) {
@@ -119,80 +112,10 @@ class Process {
         }
     }
 
-//    val badHistoryMemory = hashMapOf<String, HashMap<Long, Long?>>()
-//
-//    private fun hasDate(currency: String, date: Long): Boolean {
-//        return badHistoryMemory.containsKey(currency) && badHistoryMemory[currency]!!.containsKey(date)
-//    }
-//
-//    private fun addDate(currency: String, date: Long, result: Long?) {
-//        if (!badHistoryMemory.containsKey(currency))
-//            badHistoryMemory[currency] = hashMapOf()
-//        badHistoryMemory[currency]!![date] = result
-//    }
-//
-//    private fun printDate(date: Long): String {
-//        return SimpleDateFormat("dd-MM-yyyy").format(Date(date))
-//    }
-//
-//    var economizedPlusCall = 0
-//    var economizedMinorCall = 0
-//
-//    private fun retrieveMarketCapExtended(date: Long, currency: String): Long? {
-//        if (hasDate(currency, date))
-//            return badHistoryMemory[currency]!![date]
-//
-//        var result1: Long? = retrieveMarketCap(date, currency) ?: return null
-//        if (result1 != 0L)
-//            return result1
-//
-//        result1 = 0L
-//        var result2: Long? = 0L
-//
-////        if (economizedMinorCall > 46)
-////            Unit
-//
-////        var turn = 1
-////        while (result1 == 0L && result2 == 0L) {
-////            val date1 = date + (86400000 * turn)
-////            val date2 = date - (86400000 * turn)
-////
-////            if (hasDate(currency, date1)) {
-////                result1 = badHistoryMemory[currency]!![date1]
-////                economizedPlusCall++
-////                println("economized plus call $economizedPlusCall")
-////            } else {
-////                result1 = retrieveMarketCap(date1, currency)
-////                if (result1 == null || result1 == 0L)
-////                    addDate(currency, date1, result1)
-////            }
-////
-////            if (hasDate(currency, date2)) {
-////                result2 = badHistoryMemory[currency]!![date2]
-////                economizedMinorCall++
-////                println("economized minor call $economizedMinorCall")
-////            } else {
-////                result2 = retrieveMarketCap(date2, currency)
-////                if (result2 == null || result1 == 0L)
-////                    addDate(currency, date2, result2)
-////            }
-////
-////            turn++
-////            if (turn > 2)
-////                return null
-////        }
-//
-//        if (result1 != 0L)
-//            return result1
-//        return result2
-//    }
-
     private fun checkPurifiedJson(newValues: CustomHistoryJson) {
         for (day in newValues.days) {
             if (day.market_cap < 1)
                 throw AssertionError()
-
-//                retrieveMarketCap(day.date, day.name)
         }
     }
 
@@ -384,7 +307,6 @@ class Process {
                     crypto.days[existingCryptoMap[crypto]!!].date = parentDay.date
                 existingCryptoMap[crypto] = existingCryptoMap[crypto]!! + 1
             }
-
         }
     }
 
