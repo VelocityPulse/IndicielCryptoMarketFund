@@ -1,6 +1,6 @@
 package entity
 
-class CustomHistoryJson {
+class CryptoHistory {
     var name: String = ""
     var days: MutableList<Day> = arrayListOf()
 
@@ -15,4 +15,7 @@ data class Day(
     var price: Double = 0.0,
     var market_cap: Long = -1,
     var top_position: Int = -1,
+    var daily_delta: Double = 0.0,
+    var weekly_delta: Double = 0.0,
+    var monthly_delta: Double = 0.0
 )

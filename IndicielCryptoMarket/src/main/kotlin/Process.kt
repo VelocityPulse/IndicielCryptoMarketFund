@@ -113,7 +113,7 @@ class Process {
         }
     }
 
-    private fun checkPurifiedJson(newValues: CustomHistoryJson) {
+    private fun checkPurifiedJson(newValues: CryptoHistory) {
         for (day in newValues.days) {
             if (day.market_cap < 1)
                 throw AssertionError()
@@ -125,7 +125,7 @@ class Process {
 
         val j: CoinGeckoFullHistory = Gson().fromJson(content, CoinGeckoFullHistory::class.java)
 
-        val newValues = CustomHistoryJson()
+        val newValues = CryptoHistory()
 
         for (i in 0 until j.prices.size) {
 
@@ -200,9 +200,9 @@ class Process {
         loopCurrencyList()
     }
 
-    private fun findOldestCrypto(list: MutableList<CustomHistoryJson>): CustomHistoryJson {
+    private fun findOldestCrypto(list: MutableList<CryptoHistory>): CryptoHistory {
         var timeRef = Long.MAX_VALUE
-        var ret: CustomHistoryJson? = null
+        var ret: CryptoHistory? = null
 
         for (crypto in list) {
             if (crypto.days[0].date < timeRef) {
@@ -213,7 +213,7 @@ class Process {
         return ret!!
     }
 
-    private fun findCrypto(jsonList: MutableList<CustomHistoryJson>, name: String): CustomHistoryJson? {
+    private fun findCrypto(jsonList: MutableList<CryptoHistory>, name: String): CryptoHistory? {
         for (elem in jsonList) {
             if (elem.name == name)
                 return elem
@@ -221,15 +221,22 @@ class Process {
         return null
     }
 
+    private fun findDay(crypto: CryptoHistory, date: Long): Day? {
+        for (day in crypto.days) {
+            if (day.date == date)
+                return day
+        }
+        return null
+    }
+
     fun calculatePositions() {
         println("Calculate top position")
-        val startTime = System.nanoTime()
 
-        val jsonList = mutableListOf<CustomHistoryJson>()
+        val jsonList = mutableListOf<CryptoHistory>()
 
         val dir = File(dataPath + symbolsPath)
         for (file in dir.listFiles()!!)
-            jsonList.add(Gson().fromJson(file.readText(), CustomHistoryJson::class.java))
+            jsonList.add(Gson().fromJson(file.readText(), CryptoHistory::class.java))
 
         normalizeDates(jsonList)
 
@@ -272,21 +279,19 @@ class Process {
 
         checkDuplicatedPositions(jsonList)
 
+        println("Writing on disk...")
         File(dataPath + processedSymbolsPath).mkdirs()
         for (elem in jsonList) {
             val jsonText = Gson().toJson(elem)
             File(dataPath + processedSymbolsPath + elem.name).writeText(jsonText)
         }
-
-
-        println("End, Time elapsed : " + ((System.nanoTime() - startTime) / 1000000000.0) + "s")
     }
 
-    private fun normalizeDates(jsonList: MutableList<CustomHistoryJson>) {
+    private fun normalizeDates(jsonList: MutableList<CryptoHistory>) {
         val oldestCrypto = findOldestCrypto(jsonList)
         var normalizeCount = 0
 
-        val existingCryptoMap = hashMapOf<CustomHistoryJson, Int>()
+        val existingCryptoMap = hashMapOf<CryptoHistory, Int>()
         for (parentDay in oldestCrypto.days) {
 
             for (crypto in jsonList) {
@@ -312,7 +317,7 @@ class Process {
         }
     }
 
-    private fun checkDuplicatedPositions(jsonList: MutableList<CustomHistoryJson>) {
+    private fun checkDuplicatedPositions(jsonList: MutableList<CryptoHistory>) {
         val oldestCrypto = findOldestCrypto(jsonList)
 
         for ((turn, parentDay) in oldestCrypto.days.withIndex()) {
@@ -333,6 +338,44 @@ class Process {
                     throw java.lang.IllegalArgumentException("Top has duplicated position for day n°$turn")
                 positionList.add(day.top_position)
             }
+        }
+    }
+
+    fun calculateDeltas() {
+        println("Calculate deltas")
+
+        val jsonList = mutableListOf<CryptoHistory>()
+
+        val dir = File(dataPath + symbolsPath)
+        for (file in dir.listFiles()!!)
+            jsonList.add(Gson().fromJson(file.readText(), CryptoHistory::class.java))
+
+        val oldestCrypto = findOldestCrypto(jsonList)
+
+        var turn = 0
+        for (parentDayDaily in oldestCrypto.days) {
+            println("Day n° ${turn++}")
+            for (crypto in jsonList) {
+
+                for ((index, day) in crypto.days.withIndex()) {
+                    if (day.date == parentDayDaily.date) {
+                        if (index > 1)
+                            day.daily_delta = (day.price - crypto.days[index - 1].price) / crypto.days[index - 1].price * 100
+                        if (index > 7)
+                            day.weekly_delta = (day.price - crypto.days[index - 7].price) / crypto.days[index - 7].price * 100
+                        if (index > 30)
+                            day.monthly_delta = (day.price - crypto.days[index - 30].price) / crypto.days[index - 30].price * 100
+                    }
+                }
+            }
+        }
+        jsonList.sortByDescending { it.days.last().market_cap }
+
+        println("Writing on disk...")
+        File(dataPath + processedSymbolsPath).mkdirs()
+        for (elem in jsonList) {
+            val jsonText = Gson().toJson(elem)
+            File(dataPath + processedSymbolsPath + elem.name).writeText(jsonText)
         }
     }
 }

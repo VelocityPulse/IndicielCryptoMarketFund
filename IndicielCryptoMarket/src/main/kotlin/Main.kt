@@ -8,12 +8,14 @@ fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
         val f = Process()
         if ("fetch_data" == args[0])
-
-        // TODO : STETH remove stacked ether
             f.fetchData()
 
-        if ("calculate" == args[0])
-            f.calculatePositions()
+        if ("calculate" == args[0]) {
+            val startTime = System.nanoTime()
+//            f.calculatePositions()
+            f.calculateDeltas()
+            println("End, Time elapsed : " + ((System.nanoTime() - startTime) / 1000000000.0) + "s")
+        }
 
     }
 
