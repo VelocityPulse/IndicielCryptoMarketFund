@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.abs
 
 class Process {
 
@@ -17,7 +18,7 @@ class Process {
     private val processedSymbolsPath = "processedSymbols/"
     private val currencyList = "currency_list"
     private val ignoredCoins =
-        arrayListOf("busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei", "wbtc")
+        arrayListOf("busd", "usdt", "usdc", "dai", "tusd", "usdp", "usdn", "usdd", "fei", "wbtc", "steth")
 
     private val additionalCoins =
         arrayListOf("terra-luna")
@@ -128,21 +129,19 @@ class Process {
 
         for (i in 0 until j.prices.size) {
 
-            if (j.market_caps.size == i - 1)
-
-                try {
-                    j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
-                    if (j.market_caps[i][1].toLong() == 0L)
-                        throw java.lang.IllegalArgumentException()
-                } catch (e: Throwable) {
-                    val fetchedMarketCap = getClosestMarketCap(i, j.market_caps, 3, currency)
-                    if (fetchedMarketCap == null) {
-                        println("Jumping this day")
-                        continue
-                    }
-                    println("Market cap retrieved: $fetchedMarketCap")
-                    j.market_caps[i].add(1, fetchedMarketCap.toDouble())
+            try {
+                j.market_caps[i][1].toLong() // Prevent empty value by accessing it a first time
+                if (j.market_caps[i][1].toLong() == 0L)
+                    throw java.lang.IllegalArgumentException()
+            } catch (e: Throwable) {
+                val fetchedMarketCap = getClosestMarketCap(i, j.market_caps, 4, currency)
+                if (fetchedMarketCap == null) {
+                    println("Jumping this day")
+                    continue
                 }
+                println("Market cap retrieved: $fetchedMarketCap")
+                j.market_caps[i].add(1, fetchedMarketCap.toDouble())
+            }
 
             val day = Day(
                 name = currency,
@@ -172,7 +171,7 @@ class Process {
         var turn = 0
 
         while (result1 == 0L && result2 == 0L) {
-            println("Researching marketcap for [$currency] turn n°$turn")
+            println("Researching market-cap for [$currency] turn n°$turn")
             if (turn == limit)
                 return null
             turn++
@@ -181,7 +180,8 @@ class Process {
                 result1 = marketCaps[offset + (turn + 1)][1].toLong()
                 result2 = marketCaps[offset - (turn - 1)][1].toLong()
             } catch (th: Throwable) {
-                return null
+                if (result1 != 0L)
+                    break
             }
         }
 
@@ -254,6 +254,7 @@ class Process {
             }
 
             for ((position, elem) in presentAtThisDay.withIndex()) {
+
                 val crypto = findCrypto(jsonList, elem.name)!!
                 for (day in crypto.days) {
                     if (day.date == parentDay.date) {
@@ -283,28 +284,29 @@ class Process {
 
     private fun normalizeDates(jsonList: MutableList<CustomHistoryJson>) {
         val oldestCrypto = findOldestCrypto(jsonList)
+        var normalizeCount = 0
 
         val existingCryptoMap = hashMapOf<CustomHistoryJson, Int>()
-        for ((turn, parentDay) in oldestCrypto.days.withIndex()) {
+        for (parentDay in oldestCrypto.days) {
 
             for (crypto in jsonList) {
                 if (existingCryptoMap.containsKey(crypto))
                     continue
-                for (day in crypto.days) {
-                    if (day.date > parentDay.date)
-                        break
-                    if (day.date == parentDay.date) {
-                        existingCryptoMap[crypto] = 0
-                        continue
-                    }
-                }
+                if (crypto.days[0].date == parentDay.date || crypto.days[0].date < parentDay.date)
+                    existingCryptoMap[crypto] = 0 // Adding key
             }
 
             for (crypto in existingCryptoMap.keys) {
-                if (crypto.days.size >= existingCryptoMap[crypto]!!)
+                if (existingCryptoMap[crypto]!! >= crypto.days.size)
                     continue
-                if (crypto.days[existingCryptoMap[crypto]!!].date != parentDay.date)
+
+                // if the crypto day is below 12h from the parent day
+                if (abs(crypto.days[existingCryptoMap[crypto]!!].date - parentDay.date) in (1..43200)) {
+//                    val actualDifference = crypto.days[existingCryptoMap[crypto]!!].date - parentDay.date
+                    normalizeCount++
+                    println("Normalizing date n°$normalizeCount")
                     crypto.days[existingCryptoMap[crypto]!!].date = parentDay.date
+                }
                 existingCryptoMap[crypto] = existingCryptoMap[crypto]!! + 1
             }
         }
@@ -328,7 +330,7 @@ class Process {
 
             for (day in sameDays) {
                 if (positionList.contains(day.top_position))
-                    throw java.lang.IllegalArgumentException()
+                    throw java.lang.IllegalArgumentException("Top has duplicated position for day n°$turn")
                 positionList.add(day.top_position)
             }
         }
