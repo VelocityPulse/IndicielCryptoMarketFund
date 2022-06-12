@@ -98,7 +98,8 @@ class Simulation:
         multiple = 1
         stopping_end = 19
         starting_day = 3291
-        max_top_position = 90
+        # starting_day = 3200
+        max_top_position = 80
 
         fig = go.Figure()
         processed_crypto = []
@@ -136,7 +137,7 @@ class Simulation:
 
                         if relative_day_count == 3294 and crypto["name"] == "dogecoin":
                             crypto  # date = 1652140800000
-                            # market cap  =
+                            # market cap  = 13940613503
                             # top position = 7
 
                         if relative_day_count == 3294 and crypto["name"] == "terra-luna":
