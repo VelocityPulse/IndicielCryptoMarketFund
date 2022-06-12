@@ -346,7 +346,7 @@ class Process {
 
         val jsonList = mutableListOf<CryptoHistory>()
 
-        val dir = File(dataPath + symbolsPath)
+        val dir = File(dataPath + processedSymbolsPath)
         for (file in dir.listFiles()!!)
             jsonList.add(Gson().fromJson(file.readText(), CryptoHistory::class.java))
 

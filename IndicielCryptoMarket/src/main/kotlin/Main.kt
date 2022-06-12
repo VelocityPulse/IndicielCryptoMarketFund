@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
 
         if ("calculate" == args[0]) {
             val startTime = System.nanoTime()
-//            f.calculatePositions()
+            f.calculatePositions()
             f.calculateDeltas()
             println("End, Time elapsed : " + ((System.nanoTime() - startTime) / 1000000000.0) + "s")
         }
