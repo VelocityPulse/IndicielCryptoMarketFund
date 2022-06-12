@@ -163,3 +163,70 @@ class Simulation:
         fig.show()
 
         pass
+
+    def start_v2(self):
+        symbol_list = self.getSymbols()
+
+        self.checkDuplicatePosition(symbol_list, 3304)
+
+        multiple = 1
+        starting_day = 3091
+        ending_day = 3312
+        max_top_position = 1
+
+        fig = go.Figure()
+        oldest_crypto = self.find_oldest_crypto(symbol_list)
+        day_turn = -1
+
+        cloud_crypto_points = {}
+
+        for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
+            day_turn += 1
+
+            if day_turn > ending_day:
+                break
+            if day_turn < starting_day:
+                continue
+
+            if day_turn % multiple != 0:
+                continue
+
+            for crypto in symbol_list:
+                day = self.getDayByDate(crypto, parent_day["date"])
+                if day is None:
+                    continue
+
+                if day["top_position"] < max_top_position:
+                    continue
+
+                self.storeCloudPoints(cloud_crypto_points, crypto, day_turn, day["top_position"])
+
+            print("day n°" + str(day_turn))
+
+        for item in cloud_crypto_points.items():
+            x_list = []
+            y_list = []
+            for entry in item[1].items():
+                x_list.append(entry[0])
+                top_position = entry[1] + 101 - (entry[1] * 2)
+                y_list.append(top_position)
+            fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0]))
+
+        fig.show()
+
+        pass
+
+    def storeCloudPoints(self, cloud_crypto_points, crypto, day_turn, top_position):
+        new_point = {day_turn: top_position}
+        if crypto["name"] in cloud_crypto_points:
+            cloud_crypto_points[crypto["name"]].update(new_point)
+        else:
+            new_crypto = {crypto["name"]: {}}
+            cloud_crypto_points.update(new_crypto)
+            cloud_crypto_points[crypto["name"]].update(new_point)
+
+    def getDayByDate(self, crypto, date):
+        for day in crypto["days"]:
+            if day["date"] == date:
+                return day
+        return None

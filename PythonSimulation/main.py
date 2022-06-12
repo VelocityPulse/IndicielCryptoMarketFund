@@ -21,6 +21,6 @@ if __name__ == '__main__':
         # f.calculate_top_positions()
 
     elif len(sys.argv) > 1 and sys.argv[1] == "simulation":
-        Simulation().start()
+        Simulation().start_v2()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
