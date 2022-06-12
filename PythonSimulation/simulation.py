@@ -78,9 +78,6 @@ class Simulation:
                     if i == day:
                         days_dict.update({crypto[0]: crypto[1][day]})
 
-            if i == 3301:
-                i
-
             used_positions = []
             for item in days_dict.items():
                 if used_positions.__contains__(item[1]):
@@ -99,8 +96,9 @@ class Simulation:
         self.checkDuplicatePosition(symbol_list, 3304)
 
         multiple = 1
-        stopping_end = 20
-        starting_day = 2000
+        stopping_end = 19
+        starting_day = 3291
+        max_top_position = 90
 
         fig = go.Figure()
         processed_crypto = []
@@ -136,16 +134,19 @@ class Simulation:
 
                         top_position = day["top_position"] + 101 - day["top_position"] * 2
 
-                        if relative_day_count == 3305 and crypto["name"] == "ripple":
-                            crypto
+                        if relative_day_count == 3294 and crypto["name"] == "dogecoin":
+                            crypto  # date = 1652140800000
+                            # market cap  =
+                            # top position = 7
 
-                        if relative_day_count == 3305 and crypto["name"] == "cardano":
-                            crypto
+                        if relative_day_count == 3294 and crypto["name"] == "terra-luna":
+                            crypto  # date = 1651968000000
+                            # market cap  = 23535728154
+                            # top position = 7
 
-                        if relative_day_count % multiple == 0 and top_position > 50:
+                        if relative_day_count % multiple == 0 and top_position > max_top_position:
 
                             if relative_day_count > starting_day:
-
                                 self.storeToDictionaryForCheck(relative_day_count, daily_dictionary_position_check,
                                                                top_position, crypto)
 
