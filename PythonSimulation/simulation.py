@@ -3,6 +3,8 @@ import os
 import sys
 
 import plotly.graph_objects as go
+import numpy as np
+
 
 
 class Simulation:
@@ -170,7 +172,8 @@ class Simulation:
         self.checkDuplicatePosition(symbol_list, 3304)
 
         multiple = 1
-        starting_day = 3091
+        # starting_day = 3091
+        starting_day = 3200
         ending_day = 3312
         max_top_position = 1
 
@@ -206,16 +209,19 @@ class Simulation:
         for item in cloud_crypto_points.items():
             x_list = []
             y_list = []
+            price_list = []
             for entry in item[1].items():
                 x_list.append(entry[0])
                 top_position = entry[1] + 101 - (entry[1] * 2)
                 y_list.append(top_position)
-            fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0]))
+                price_list.append()
+            fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0], hovertext=x_list))
 
         fig.show()
 
         pass
 
+    # TODO : store the whole day so we can use all the data in the calling function
     def storeCloudPoints(self, cloud_crypto_points, crypto, day_turn, top_position):
         new_point = {day_turn: top_position}
         if crypto["name"] in cloud_crypto_points:
