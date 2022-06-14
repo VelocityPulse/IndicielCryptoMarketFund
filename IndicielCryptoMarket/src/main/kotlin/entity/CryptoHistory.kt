@@ -14,6 +14,7 @@ data class Day(
     var date: Long = -1,
     var price: Double = 0.0,
     var market_cap: Long = -1,
+    var total_market_cap: Long = -1,
     var top_position: Int = -1,
     var daily_delta: Double = 0.0,
     var weekly_delta: Double = 0.0,

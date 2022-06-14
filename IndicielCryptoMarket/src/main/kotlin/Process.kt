@@ -346,6 +346,7 @@ class Process {
 
         val jsonList = mutableListOf<CryptoHistory>()
 
+
         val dir = File(dataPath + processedSymbolsPath)
         for (file in dir.listFiles()!!)
             jsonList.add(Gson().fromJson(file.readText(), CryptoHistory::class.java))
@@ -367,6 +368,50 @@ class Process {
                             day.monthly_delta = (day.price - crypto.days[index - 30].price) / crypto.days[index - 30].price * 100
                     }
                 }
+            }
+        }
+        jsonList.sortByDescending { it.days.last().market_cap }
+
+        println("Writing on disk...")
+        File(dataPath + processedSymbolsPath).mkdirs()
+        for (elem in jsonList) {
+            val jsonText = Gson().toJson(elem)
+            File(dataPath + processedSymbolsPath + elem.name).writeText(jsonText)
+        }
+    }
+
+    @Deprecated("not pertinent")
+    fun calculateTotalMarketCap() {
+        println("Calculate deltas")
+
+        val jsonList = mutableListOf<CryptoHistory>()
+
+        val dir = File(dataPath + processedSymbolsPath)
+        for (file in dir.listFiles()!!)
+            jsonList.add(Gson().fromJson(file.readText(), CryptoHistory::class.java))
+
+        val oldestCrypto = findOldestCrypto(jsonList)
+
+        var turn = 0
+        for (parentDayDaily in oldestCrypto.days) {
+            println("Day n° ${turn++}")
+
+            val listOfDay = mutableListOf<Day>()
+            for (crypto in jsonList) {
+                for (day in crypto.days) {
+                    if (day.date == parentDayDaily.date) {
+                        listOfDay.add(day)
+                        break
+                    }
+                }
+            }
+
+            var totalMarketCap = 0L
+            for (day in listOfDay) {
+                totalMarketCap += day.market_cap
+            }
+            for (day in listOfDay) {
+                day.total_market_cap = totalMarketCap
             }
         }
         jsonList.sortByDescending { it.days.last().market_cap }

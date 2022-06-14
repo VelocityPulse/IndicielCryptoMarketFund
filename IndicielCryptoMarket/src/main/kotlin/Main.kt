@@ -14,6 +14,7 @@ fun main(args: Array<String>) {
             val startTime = System.nanoTime()
             f.calculatePositions()
             f.calculateDeltas()
+//            f.calculateTotalMarketCap()
             println("End, Time elapsed : " + ((System.nanoTime() - startTime) / 1000000000.0) + "s")
         }
 
