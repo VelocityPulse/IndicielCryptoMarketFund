@@ -214,7 +214,6 @@ class Simulation:
                 day = entry[1]
                 top_position = day["top_position"] + 101 - (day["top_position"] * 2)
                 y_list.append(top_position)
-                text_info = ""
                 if multiple == 1:
                     text_info = str(day["daily_delta"]) + "%"
                 elif multiple == 7:
