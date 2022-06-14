@@ -171,11 +171,10 @@ class Simulation:
 
         self.checkDuplicatePosition(symbol_list, 3304)
 
-        multiple = 1
-        # starting_day = 3091
+        multiple = 7
         starting_day = 3200
         ending_day = 3312
-        max_top_position = 1
+        max_top_position = 50
 
         fig = go.Figure()
         oldest_crypto = self.find_oldest_crypto(symbol_list)
@@ -199,10 +198,10 @@ class Simulation:
                 if day is None:
                     continue
 
-                if day["top_position"] < max_top_position:
+                if day["top_position"] > max_top_position:
                     continue
 
-                self.storeCloudPoints(cloud_crypto_points, crypto, day_turn, day["top_position"])
+                self.storeCloudPoints(cloud_crypto_points, crypto, day_turn, day)
 
             print("day n°" + str(day_turn))
 
@@ -212,18 +211,30 @@ class Simulation:
             price_list = []
             for entry in item[1].items():
                 x_list.append(entry[0])
-                top_position = entry[1] + 101 - (entry[1] * 2)
+                day = entry[1]
+                top_position = day["top_position"] + 101 - (day["top_position"] * 2)
                 y_list.append(top_position)
-                price_list.append()
-            fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0], hovertext=x_list))
+                text_info = ""
+                if multiple == 1:
+                    text_info = str(day["daily_delta"]) + "%"
+                elif multiple == 7:
+                    text_info = str(day["weekly_delta"]) + "%"
+                elif 29 < multiple <= 31:
+                    text_info = str(day["monthly_delta"]) + "%"
+                else:
+                    text_info = "bad multiple"
+
+                text_info += "\n" + "Price: " + str(day["price"])
+                price_list.append(text_info)
+
+            fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0], hovertext=price_list))
 
         fig.show()
 
         pass
 
-    # TODO : store the whole day so we can use all the data in the calling function
-    def storeCloudPoints(self, cloud_crypto_points, crypto, day_turn, top_position):
-        new_point = {day_turn: top_position}
+    def storeCloudPoints(self, cloud_crypto_points, crypto, day_turn, day):
+        new_point = {day_turn: day}
         if crypto["name"] in cloud_crypto_points:
             cloud_crypto_points[crypto["name"]].update(new_point)
         else:
