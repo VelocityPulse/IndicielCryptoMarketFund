@@ -3,11 +3,9 @@ import os
 import sys
 
 import plotly.graph_objects as go
-import numpy as np
 
 
-
-class Simulation:
+class TopSimulation:
     data_path = "../IndicielCryptoMarket/data/"
     symbols_path = "processedSymbols/"
 
@@ -226,7 +224,8 @@ class Simulation:
                 text_info += "\n" + "Price: " + str(day["price"])
                 price_list.append(text_info)
 
-            fig.add_trace(trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0], hovertext=price_list))
+            fig.add_trace(
+                trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0], hovertext=price_list))
 
         fig.show()
 

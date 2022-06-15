@@ -9,8 +9,9 @@
 # Press the green button in the gutter to run the script.
 import sys
 
+from backTestSimulation import BackTestSimulation
 from fetchData import FetchData
-from simulation import Simulation
+from topSimulation import TopSimulation
 
 if __name__ == '__main__':
     print("Start")
@@ -21,6 +22,9 @@ if __name__ == '__main__':
         # f.calculate_top_positions()
 
     elif len(sys.argv) > 1 and sys.argv[1] == "simulation":
-        Simulation().start_v2()
+        TopSimulation().start_v2()
+
+    elif len(sys.argv) > 1 and sys.argv[1] == "backtest":
+        BackTestSimulation().start()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
