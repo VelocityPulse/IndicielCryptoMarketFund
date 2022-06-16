@@ -27,13 +27,26 @@ class BackTestSimulation:
                 ret = crypto
         return ret
 
+    def check_wallet_percent_is_equal_to_100(self, daily_wallet_collection):
+        total_percent = 0
+        for crypto in daily_wallet_collection.items():
+            percent = crypto[1][-1]
+            if percent > 100 or percent < 0:
+               percent
+            total_percent += percent
+
+        assert total_percent == 100
+        pass
+
     def start(self):
         symbol_list = self.getSymbols()
 
         multiple = 7
         starting_day = 3200
-        ending_day = 3312
-        max_top_position = 50
+        # ending_day = 3312
+        ending_day = 3230
+        max_top_position = 10
+        base_usdt_money = 100
 
         fig = go.Figure()
         oldest_crypto = self.find_oldest_crypto(symbol_list)
@@ -65,33 +78,56 @@ class BackTestSimulation:
 
             print("day n°" + str(day_turn))
 
-        for item in cloud_crypto_points.items():
+        daily_wallet_collection = {}
+        for item in cloud_crypto_points.items():  # Loop all days
             x_list = []
             y_list = []
-            price_list = []
-            for entry in item[1].items():
-                x_list.append(entry[0])
-                day = entry[1]
-                top_position = day["top_position"] + 101 - (day["top_position"] * 2)
-                y_list.append(top_position)
-                # TODO
-                price_list.append(day["price"])
+            for day_entry in item[1].items():  # Loop all crypto present at this day
+                x_list.append(day_entry[0])
+                day = day_entry[1]
 
+                # if day["total_market_cap"] == -1:
+                #     continue
+
+                if day["top_position"] >= max_top_position:
+                    percent_importance = 0
+                else:
+                    percent_importance = day["market_cap"] / day["total_market_cap"] * 100
+                theoretical_invest = base_usdt_money * percent_importance / 100
+
+                if not 0 <= theoretical_invest <= 100:
+                    theoretical_invest # at somepoint, bitcoin is only 1.9% of the
+                #     total market cap, which means the T.M.C is way too big
+
+
+                if day["name"] in daily_wallet_collection:
+                    daily_wallet_collection[day["name"]].append(theoretical_invest)
+                else:
+                    new_row = {day["name"]: []}
+                    daily_wallet_collection.update(new_row)
+                    daily_wallet_collection[day["name"]].append(theoretical_invest)
+
+            # daily_wallet_collection.append(wallet_composition)
             fig.add_trace(
-                trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0], hovertext=price_list))
+                trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=item[0]))
 
-        fig.show()
+        # fig.show()
+        self.check_wallet_percent_is_equal_to_100(daily_wallet_collection)
         pass
 
     def calculateTotalMarketCap(self, symbols, oldest_crypto, max_top_position, start_day, ending_day):
-        presentAtThisDay = []
         turn = -1
         for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
             turn += 1
+
             if turn < start_day or turn > ending_day:
                 continue
+
+            presentAtThisDay = []
             print("Calculating total market cap for day n°" + str(turn))
             for crypto in symbols:
+                if crypto["name"] == "okb":
+                    crypto
                 for day in crypto["days"]:
                     if day["date"] == parent_day["date"] and day["top_position"] < max_top_position:
                         presentAtThisDay.append(day)
@@ -99,6 +135,7 @@ class BackTestSimulation:
             total_market_cap = 0
             for day in presentAtThisDay:
                 total_market_cap += day["market_cap"]
+            print("Total market cap : " + str(total_market_cap / 100000))
             for day in presentAtThisDay:
                 day["total_market_cap"] = total_market_cap
 
