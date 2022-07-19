@@ -27,7 +27,7 @@ class BackTestSimulation:
                 ret = crypto
         return ret
 
-    def check_wallet_percent_is_equal_to_100(self, daily_wallet_collection):
+    def check_total_percent_importance_is_equal_to_100(self, daily_wallet_collection):
         total_percent = 0
         for crypto in daily_wallet_collection.items():
             percent = crypto[1]["percent_importance"]
@@ -36,14 +36,14 @@ class BackTestSimulation:
                 assert False
             total_percent += percent
 
-        assert total_percent == 100
+        assert round(total_percent) == 100
         pass
 
     def start(self):
         symbol_list = self.getSymbols()
 
         multiple = 7
-        starting_day = 3200
+        starting_day = 3100
         # ending_day = 3312
         ending_day = 3230
         max_top_position = 10
@@ -55,7 +55,6 @@ class BackTestSimulation:
         day_turn = -1
 
         cloud_crypto_points = {}
-
         # Collecting all days in dictionary
         for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
             day_turn += 1
@@ -77,15 +76,15 @@ class BackTestSimulation:
 
         # Process backtesting
         daily_wallet_collection = {}
-        day_turn = -1
         last_day_list_of_crypto = {}
+        day_turn = -1
         for day_list_of_crypto in cloud_crypto_points.values():  # Loop all days
             day_turn += 1
             x_list = []
             y_list = []
 
             # STEP 1 : buy all with base money
-            # while the first day
+            # ONLY THE FIRST DAY
             if day_turn == 0:
                 for day in day_list_of_crypto.values():  # Loop day of each crypto
                     # day = day_entry
@@ -103,12 +102,13 @@ class BackTestSimulation:
                     day.update({"token_owned": theoretical_invest * day["price"]})  # add commission here
                     day_list_of_crypto.update({day["name"]: day})
                     self.storeKeyToDict(daily_wallet_collection, day["name"], day)
-                self.check_wallet_percent_is_equal_to_100(daily_wallet_collection)
+                self.check_total_percent_importance_is_equal_to_100(daily_wallet_collection)
 
             # STEP 2 : RE-BALANCE EACH TURN
             if day_turn > 0:
                 base_usdt_money = 0
                 sold_money = 0
+
                 # LOOP CAPITAL CALCULATION
                 for day_entry in day_list_of_crypto.items():  # Loop day of each crypto
                     day = day_entry[1]
@@ -121,6 +121,12 @@ class BackTestSimulation:
 
                     last_day = last_day_list_of_crypto[day["name"]]
                     base_usdt_money += day["price"] * last_day["token_owned"]
+                    self.storeKeyToDict(daily_wallet_collection, day["name"], day)
+
+                    # TODO for next : Check above storKeyToDict do his job correctly for the below check
+                    # TODO for next : Crash when we take a too big range of day
+
+                self.check_total_percent_importance_is_equal_to_100(daily_wallet_collection)
 
                 # LOOP RE-BALANCE
                 for day_entry in day_list_of_crypto.items():  # Loop day of each crypto
@@ -132,20 +138,19 @@ class BackTestSimulation:
                         percent_importance = day["market_cap"] / day["total_market_cap"] * 100
                     day.update({"percent_importance": percent_importance})
 
-                    correct_invest = \
-                        day["percent_importance"] * last_day["token_owned"] * day["price"] / 100
+                    last_day = last_day_list_of_crypto[day["name"]]
+                    correct_invest = day["percent_importance"] * last_day["token_owned"] * day["price"] / 100
 
                     if correct_invest > 0 and correct_invest < last_day["usdt_invest"]:
                         # SELL
                         sold_money = correct_invest - last_day["usdt_invest"]
-                        last_day["usdt_invest"] = correct_invest
-                        # TODO : TEST
+                        last_day["usdt_invest"] = correct_invest  # Are we sure of that ?
 
+                    day.update({"usdt_invest": correct_invest})
+                    day.update({"token_owned": correct_invest * day["price"]})  # add commission here
 
-                    day.update({"usdt_invest": x})
-                    day.update({"token_owned": theoretical_invest * day["price"]})  # add commission here
+                # TODO loop buy
 
-                self.check_wallet_percent_is_equal_to_100(daily_wallet_collection)
 
                 # fig.add_trace(
                 #     trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=day_list_of_crypto))
