@@ -9,6 +9,14 @@ class BackTestSimulation:
     data_path = "../IndicielCryptoMarket/data/"
     symbols_path = "processedSymbols/"
 
+    class Parameters:
+        multiple = 7
+        starting_day = 3100
+        ending_day = 3230
+        max_top_position = 10
+        starting_usdt_money = 50
+
+
     def getSymbols(self):
         json_list = []
 
@@ -42,59 +50,37 @@ class BackTestSimulation:
     def start(self):
         symbol_list = self.getSymbols()
 
-        multiple = 7
-        starting_day = 3100
-        # ending_day = 3312
-        ending_day = 3230
-        max_top_position = 10
-        base_usdt_money = 50
+        parameters = self.Parameters()
 
         fig = go.Figure()
         oldest_crypto = self.find_oldest_crypto(symbol_list)
-        self.calculateTotalMarketCap(symbol_list, oldest_crypto, max_top_position, starting_day, ending_day)
-        day_turn = -1
+        self.calculateTotalMarketCap(symbol_list, oldest_crypto, parameters)
 
-        cloud_crypto_points = {}
-        # Collecting all days in dictionary
-        for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
-            day_turn += 1
-            if day_turn > ending_day:
-                break
-            if day_turn < starting_day:
-                continue
-            if day_turn % multiple != 0:
-                continue
-            for crypto in symbol_list:
-                day = self.getDayByDate(crypto, parent_day["date"])
-                if day is None:
-                    continue
-                if day["top_position"] > max_top_position:
-                    continue
-                self.storeKeyToDict(cloud_crypto_points, day_turn, {day["name"]: day})
-                # self.storeCloudPoints(cloud_crypto_points, crypto, day_turn, day)
-            print("day n°" + str(day_turn))
+        # Cloud crypto points is a dictionary where each key is a day index that contains a list of
+        # the day of each present crypto at this moment
+        cloud_crypto_points = self.collectingAllDaysInDictionary(oldest_crypto, symbol_list, parameters)
 
         # Process backtesting
-        daily_wallet_collection = {}
         last_day_list_of_crypto = {}
         day_turn = -1
         for day_list_of_crypto in cloud_crypto_points.values():  # Loop all days
             day_turn += 1
-            x_list = []
-            y_list = []
+            # x_list = []
+            # y_list = []
+            daily_wallet_collection = {}
 
             # STEP 1 : buy all with base money
             # ONLY THE FIRST DAY
             if day_turn == 0:
                 for day in day_list_of_crypto.values():  # Loop day of each crypto
                     # day = day_entry
-                    if day["top_position"] >= max_top_position:
+                    if day["top_position"] >= parameters.max_top_position:
                         percent_importance = 0
                     else:
                         percent_importance = day["market_cap"] / day["total_market_cap"] * 100
                     day.update({"percent_importance": percent_importance})
 
-                    theoretical_invest = base_usdt_money * percent_importance / 100
+                    theoretical_invest = parameters.starting_usdt_money * percent_importance / 100
                     if not 0 <= theoretical_invest <= 100:
                         assert False
 
@@ -102,6 +88,7 @@ class BackTestSimulation:
                     day.update({"token_owned": theoretical_invest * day["price"]})  # add commission here
                     day_list_of_crypto.update({day["name"]: day})
                     self.storeKeyToDict(daily_wallet_collection, day["name"], day)
+
                 self.check_total_percent_importance_is_equal_to_100(daily_wallet_collection)
 
             # STEP 2 : RE-BALANCE EACH TURN
@@ -113,18 +100,18 @@ class BackTestSimulation:
                 for day_entry in day_list_of_crypto.items():  # Loop day of each crypto
                     day = day_entry[1]
 
-                    if day["top_position"] >= max_top_position:
+                    if day["top_position"] >= parameters.max_top_position:
                         percent_importance = 0
                     else:
                         percent_importance = day["market_cap"] / day["total_market_cap"] * 100
                     day.update({"percent_importance": percent_importance})
 
+                    # If the day is not in the yesterday list, then we should not have any invested money in it
+                    # The capital calculation loop is here only to define the percent importance and
+                    # The base_usdt_money just below (but it seems not used for the moment...)
                     last_day = last_day_list_of_crypto[day["name"]]
                     base_usdt_money += day["price"] * last_day["token_owned"]
                     self.storeKeyToDict(daily_wallet_collection, day["name"], day)
-
-                    # TODO for next : Check above storKeyToDict do his job correctly for the below check
-                    # TODO for next : Crash when we take a too big range of day
 
                 self.check_total_percent_importance_is_equal_to_100(daily_wallet_collection)
 
@@ -132,7 +119,7 @@ class BackTestSimulation:
                 for day_entry in day_list_of_crypto.items():  # Loop day of each crypto
                     day = day_entry[1]
 
-                    if day["top_position"] >= max_top_position:
+                    if day["top_position"] >= parameters.max_top_position:
                         percent_importance = 0
                     else:
                         percent_importance = day["market_cap"] / day["total_market_cap"] * 100
@@ -151,10 +138,31 @@ class BackTestSimulation:
 
                 # TODO loop buy
 
-
                 # fig.add_trace(
                 #     trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=day_list_of_crypto))
             last_day_list_of_crypto = day_list_of_crypto
+
+    def collectingAllDaysInDictionary(self, oldest_crypto, symbol_list, parameters):
+        day_turn = -1
+        cloud_crypto_points = {}
+
+        for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
+            day_turn += 1
+            if day_turn > parameters.ending_day:
+                break
+            if day_turn < parameters.starting_day:
+                continue
+            if day_turn % parameters.multiple != 0:
+                continue
+            for crypto in symbol_list:
+                day = self.getDayByDate(crypto, parent_day["date"])
+                if day is None:
+                    continue
+                if day["top_position"] > parameters.max_top_position:
+                    continue
+                self.storeKeyToDict(cloud_crypto_points, day_turn, {day["name"]: day})
+            print("day n°" + str(day_turn))
+        return cloud_crypto_points
 
     def sell_losers(self, last_day, day):  # returns earned usdt money
         # sell x token too much compared to the percent_importance
@@ -169,28 +177,28 @@ class BackTestSimulation:
 
         pass
 
-    def calculateTotalMarketCap(self, symbols, oldest_crypto, max_top_position, start_day, ending_day):
+    def calculateTotalMarketCap(self, symbols, oldest_crypto, parameters):
         turn = -1
         for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
             turn += 1
 
-            if turn < start_day or turn > ending_day:
+            if turn < parameters.starting_day or turn > parameters.ending_day:
                 continue
 
-            presentAtThisDay = []
-            print("Calculating total market cap for day n°" + str(turn))
+            present_at_this_day = []
+            # print("Calculating total market cap for day n°" + str(turn))
             for crypto in symbols:
                 if crypto["name"] == "okb":
                     crypto
                 for day in crypto["days"]:
-                    if day["date"] == parent_day["date"] and day["top_position"] < max_top_position:
-                        presentAtThisDay.append(day)
+                    if day["date"] == parent_day["date"] and day["top_position"] < parameters.max_top_position:
+                        present_at_this_day.append(day)
                         break
             total_market_cap = 0
-            for day in presentAtThisDay:
+            for day in present_at_this_day:
                 total_market_cap += day["market_cap"]
-            print("Total market cap : " + str(total_market_cap / 100000))
-            for day in presentAtThisDay:
+            # print("Total market cap : " + str(total_market_cap / 100000))
+            for day in present_at_this_day:
                 day["total_market_cap"] = total_market_cap
 
     def storeKeyToDict(self, dict_, key, item):
