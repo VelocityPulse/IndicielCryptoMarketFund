@@ -58,21 +58,14 @@ class BackTestSimulation:
         cloud_crypto_points = self.collectingAllDaysInDictionary(oldest_crypto, symbol_list, parameters)
 
         # Process backtesting
+        available_and_invested_money = parameters.starting_usdt_money
         last_day_list_of_crypto = {}
         day_turn = -1
         wallet = {}
         for day_list_of_crypto in cloud_crypto_points.values():  # Loop all days
             day_turn += 1
-            # x_list = []
-            # y_list = []
-            daily_wallet_collection = {}  # only for tests
 
-            # STEP 1 : RE
-            base_usdt_money = 0
-            sold_money = 0
-
-            ################################################################################
-            # LOOP CAPITAL CALCULATION
+            # LOOP CALCULATE THE PERCENT IMPORTANCE (By using total market cap including parameters rules)
             for day_entry in day_list_of_crypto.items():  # Loop day of each crypto
                 day = day_entry[1]
 
@@ -80,44 +73,28 @@ class BackTestSimulation:
                     percent_importance = 0
                 else:
                     percent_importance = day["market_cap"] / day["total_market_cap"] * 100
+
                 day.update({"percent_importance": percent_importance})
 
-                # If the day is not in the yesterday list, then we should not have any invested money in it
-                # The capital calculation loop is here only to define the percent importance and
-                # The base_usdt_money just below (but it seems not used for the moment...)
-                last_day = last_day_list_of_crypto[day["name"]]
-                base_usdt_money += day["price"] * last_day["token_owned"]
-                self.storeKeyToDict(daily_wallet_collection, day["name"], day)
-            ################################################################################
+            self.check_total_percent_importance_is_equal_to_100(day_list_of_crypto)
 
-            self.check_total_percent_importance_is_equal_to_100(daily_wallet_collection)
+            # LOOP CALCULATE AVAILABLE MONEY
+            # Here we do not reset available_and_invested_money to 0 because the first turn it will not be
+            # added anyway, Wallet is empty.
+            # It should be reset to 0 at the sell/buy step
+            for crypto in wallet:  # Loop day of each crypto
 
-            # LOOP RE-BALANCE
-            for day_entry in day_list_of_crypto.items():  # Loop day of each crypto
+                # TODO : I think the access of this dict is wrong
+                if crypto["name"] in day_list_of_crypto:
+                    day = day_list_of_crypto[crypto["name"]]
+                    available_and_invested_money += crypto["owned_token"] * day["price"]
+
+            for day_entry in day_list_of_crypto.items():
                 day = day_entry[1]
 
-                if day["top_position"] >= parameters.max_top_position:
-                    percent_importance = 0
-                else:
-                    percent_importance = day["market_cap"] / day["total_market_cap"] * 100
-                day.update({"percent_importance": percent_importance})
+                # TODO : calculate ideal repartition
 
-                last_day = last_day_list_of_crypto[day["name"]]
-                correct_invest = day["percent_importance"] * last_day["token_owned"] * day["price"] / 100
 
-                if correct_invest > 0 and correct_invest < last_day["usdt_invest"]:
-                    # SELL
-                    sold_money = correct_invest - last_day["usdt_invest"]
-                    last_day["usdt_invest"] = correct_invest  # Are we sure of that ?
-
-                day.update({"usdt_invest": correct_invest})
-                day.update({"token_owned": correct_invest * day["price"]})  # add commission here
-
-            # TODO loop buy
-
-            # fig.add_trace(
-            #     trace=go.Scatter(x=x_list, y=y_list, mode='lines+markers', name=day_list_of_crypto))
-        last_day_list_of_crypto = day_list_of_crypto
 
     def collectingAllDaysInDictionary(self, oldest_crypto, symbol_list, parameters):
         day_turn = -1
@@ -154,7 +131,8 @@ class BackTestSimulation:
 
         pass
 
-    def calculate_total_market_cap(self, symbols, oldest_crypto, parameters):
+    @staticmethod
+    def calculate_total_market_cap(symbols, oldest_crypto, parameters):
         turn = -1
         for parent_day in oldest_crypto["days"]:  # FOR ALL BITCOIN DAYS
             turn += 1
